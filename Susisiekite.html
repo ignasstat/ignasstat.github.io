@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+                * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        .flex-container {
+            background: rgba(248, 250, 250, 0.986);
+            height: 100vh;
+            display:block;
+            padding: 1rem;
+            display: block;
+        }
+        .flex-container_1 {
+            display: flex;
+        }
+        .box_1 {
+            margin: 1rem;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            border-bottom: 2px solid #ff0000;
+        }
+        nav>div {
+            margin: 1rem;
+            /* border-bottom: 2px solid transparent; */
+            display: inline-block;
+            text-align: justify;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        nav > div:hover {
+            border-bottom: 2px solid #ff0000;}
+
+            .box_2 {
+            margin: 1rem;
+            display: flex;
+            flex-direction: row;
+            justify-content: left; }
+        .Teksto_laukeliai {
+            padding:2rem;
+        }
+        .Atskiras{
+            display: block;
+            padding: 1rem;
+        }
+        .btn{
+            cursor: pointer;
+            color: white;
+            background-color: blue;
+            border-radius: 503rem;
+            padding: 1rem;
+            text-align: center;
+            height: 3px;     
+        }
+        .btn:hover {
+            transform:skew(1.2)
+            transition: 0,2s;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="flex-container">
+        <div class="box_1">
+            <nav>
+                <div id="Pagrindinis">
+                    <a href= "CV.Ignas.html">Pagrindinis</a>
+                </div>
+                <div id="Darbai">
+                    <a href="./Darbai.html">Darbai</a>
+                </div>
+                <div id="Susisiekite">Susisiekite
+                    </div>
+            </nav>
+        </div>
+        <div class="flex-container_1">
+
+            <div class="box_2"> 
+                <h1>Kontaktai</h1>
+                <div class="Teksto_laukeliai">
+                    <textarea class="Atskiras" style="resize: none;" id="message" name="message" placeholder="Vardas" required=""></textarea>
+                    <textarea class="Atskiras" style="resize: none;" id="message" name="message" placeholder="Pavardė" required=""></textarea>
+                    <textarea class="Atskiras" style="resize: none;" id="message" name="message" placeholder="Įmonė" required=""></textarea>
+                    <textarea class="Atskiras" style="resize: none;" id="message" name="message" placeholder="El. paštas" required=""></textarea>
+                
+                <div><button class="btn" type="submit">Siųsti</button></div>
+                </div> 
+            </div>
+            <div class="box_3">
+                <h2>Telefono numeris</h2>
+                <div class="kontaktai">
+                    +3706xxxxxxx
+                </div>
+                <h2>El. Paštas</h2>
+                <div class="kontaktai">
+                    ignas.statkevicius@gmail.com
+                </div>
+                
+            </div>
+        </div>
+    </div>      
+
+
+
+
+</body>
+</html>
