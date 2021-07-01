@@ -8,7 +8,7 @@
     box-sizing: border-box;
     text-decoration: none;
     outline: none;border: none;
-    text-transform: capitalize;
+    /* text-transform: capitalize; */
     transition: all .2s linear;
 }
 
@@ -224,7 +224,7 @@ background: var(--yellow);
 }
 
 .about .row .counter .box p {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     color: white;
     padding: 1rem 0;
 }
