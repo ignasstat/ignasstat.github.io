@@ -1746,3 +1746,177 @@ function Remove-FromDelayedList {
         }
     }
 }
+
+#####For testing, function -download ssrs report as pdf######
+
+#Function Get-SQLScalar for testing, there is present in ActionFunctions.ps1
+function Get-SQLScalar {
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)] [String] $Query,
+        [Parameter(Mandatory = $true)] [String] $ConnectionString
+    )
+
+    $Connection = New-Object System.Data.SQLClient.SQLConnection($ConnectionString)
+    $Connection.Open()
+    $Command = New-Object System.Data.SQLClient.SQLCommand($Query, $Connection)
+    $SQLScalar = $Command.ExecuteScalar()
+    $Connection.Close()
+
+    return $SQLScalar
+    }
+
+function Get-JobID {
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)] [String] $jobNumber
+
+    )
+    $connectionString = "Data Source=LONWINLVSLS020,24212;Integrated Security=SSPI;Initial Catalog=BatchWorkflow";
+    $query  = "SELECT top 1 JobId FROM [BatchWorkflow].[dbo].[Job] where JobNumber = '$jobNumber' and EndDate is not null order by EndDate desc"
+    $jobID = Get-SQLScalar $query $connectionString
+
+    return $jobID
+}
+
+#DownloadReportFile
+function Get-ReportFile 
+{
+    [CmdletBinding()]
+    param
+    (
+    [Parameter(Mandatory = $true)][String] $jobNumber,
+    [Parameter(Mandatory = $true)][String] $jobOutputFolder
+    )
+
+    #set variables for testing
+
+    
+    #$JobFolder = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\CobraConsole\CBC 072\reports'
+    #$JobOutputFolder  = "\\VALWINLVAPP030\bsbappend$\Jobs\Processing\PSScripts\Development\TestJobs\CDA0009050\OutputFiles"
+    #$JobNumber = "CDA0009050" 
+    
+    
+    #set variables
+    $connectionString = "Data Source=LONWINLVSLS020,24212;Integrated Security=SSPI;Initial Catalog=BatchWorkflow"
+    $connectionString2 = "Data Source=pllwinlvsql002\mb21,1433;Integrated Security=SSPI;Initial Catalog=DataBureauDataLoadAudit";
+
+    $jobID = Get-JobID $jobNumber
+    $query = "Select Workflow from [BatchWorkflow].[dbo].[Job] where JobId = $jobID”
+    [string]$workflow = Get-SQLScalar $query $connectionString
+    [string]$ssrsFileName = $jobNumber + '_ClientMI.pdf'
+    $ssrsFile = $jobOutputFolder + "\"  + $ssrsFileName 
+    #check workflow and for url
+
+    if ( $workflow -like 'DataDna*' )
+        {
+        $query2= "SELECT ConfigValue FROM [DataBureauDataLoadAudit].[dbo].[Cobra_Config] where ConfigItem = 'urlDNA'"
+        $url = Get-SQLScalar $query2 $connectionString2
+        $ssrsPath = $url.Replace('{JobId}', $jobID)
+        }
+
+    else
+        {
+        $query2= "SELECT ConfigValue FROM [DataBureauDataLoadAudit].[dbo].[Cobra_Config] where ConfigItem = 'urlTV'"
+        $url = Get-SQLScalar $query2 $connectionString2
+        $ssrsPath = $url.Replace('{JobId}', $jobID)
+        }
+
+
+    #remove file if it already exists
+    if (Test-Path $ssrsFile)
+        {
+        Remove-Item $ssrsFile
+        }
+
+    #Checking if Job is repeat or adhoc
+
+    if($jobNumber.Contains('_'))
+    
+    #Repeat
+    {    
+    #create pdf of SQL Server Reporting Services (SSRS) report
+        $ssrsFilePdf = $ssrsPath + '&rs:Format=PDF'
+        $Credentials = Get-Credential
+        (Invoke-WebRequest -Uri $ssrsFilePdf -OutFile $ssrsFile -Credential $Credentials -TimeoutSec 240 );
+    }
+    #Adhoc
+    else
+    {
+        
+        $jobNumberSourceFolder = "\\VALWINLVAPP030\cobrashare$\DataTransfers\Inbound\RepeatTransfers\BatchMI\$jobNumber"
+        $jobOutputFolderSeveralReports = $jobOutputFolder +'\Runs\'
+        $jobIDSourceFolder = $jobNumberSourceFolder +"\" + $jobID 
+        $reportSourceFolders= Get-ChildItem $jobNumberSourceFolder
+
+        #Searching job's reports' source folders if there are the correct JobID 
+
+        $retries = 0
+        $filePresent = $false
+
+            while(-not $filePresent)
+        {
+      
+            if(Test-Path -Path $jobIDSourceFolder)
+            {
+                $filePresent = $true
+            }
+        
+            elseif($retries -ge 5)
+            {
+                Write-Verbose 'Adhoc job report  is not present yet'     
+                throw 'Adhoc job report  is not present yet'                  
+            }
+
+            else
+            {
+                Start-Sleep -Seconds 10
+                $retries = $retries + 1
+                write-host $retries 
+            }
+        
+        }
+
+
+        if($reportSourceFolders.Count -cgt 1)
+        #If more than one report under the same job, copy folders with JOBIDs into outputlocation\Runs\
+        {
+            foreach($report in $reportSourceFolders)
+            {
+                Copy-Item $report.FullName -Recurse $jobOutputFolderSeveralReports 
+                Remove-Item $report.FullName -Recurse -Force 
+            }
+            
+        }
+        else 
+
+        #If we have a single source report, then copying just a file into directly into output location
+        {   
+
+            $reportToDelete = Get-ChildItem $jobIDSourceFolder 
+            Copy-Item $reportToDelete.FullName $jobOutputFolder
+            Remove-Item $jobIDSourceFolder -Recurse -Force 
+        }
+            
+    }
+}
+
+
+
+        
+         
+    
+
+
+ <#-UseDefaultCredentials#>
+#Get-ReportFile "CDA0009050" "\\VALWINLVAPP030\bsbappend$\Jobs\Processing\PSScripts\Development\TestJobs\CDA0009050\OutputFiles"
+
+<#Testing
+$jobOutput = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\CobraConsole\CBC 072\reports\'
+$jobN = "CDA0004680_20220811"
+
+Get-ReportFile $jobN $jobOutput
+#>
+
