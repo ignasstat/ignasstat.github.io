@@ -1,0 +1,944 @@
+
+<#
+
+# CK file analysis
+
+$1008 = import-csv "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\CK\CMalert202210080600591_140.csv" -header ID, Operation
+
+$CKFiles = gci '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\CK\Investigation' -file
+
+$Dup = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\CK\dupEFT2.csv"
+
+"`"ID`",`"Operation`",`"PositionInFile`",`"FileName`"" | out-file $Dup
+
+foreach ($CKFile in $CKFiles)
+{
+    $content = import-csv ($CKFile.Fullname) -Header "ID","Operation"
+
+    $i = 0
+
+    foreach ($record in $1008)
+    {
+        $i++
+        
+        $originalAdd = $content | Where-object {$_.ID -eq ($record.ID)}
+            
+        if ($originalAdd)
+        { "`"$($record.ID)`",`"$($record.Operation)`",`"$i`",`"$($CKFile.name)`"" | out-file $Dup -append }
+        
+    }
+
+}
+#>
+<#
+
+
+$1008 = import-csv "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\CK\CMalert202210080600591_140.csv" -header ID, Operation
+
+$CKFiles = gci '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\CK\Investigation' -file
+
+$Dup = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\CK\dupR.csv"
+
+"`"ID`",`"Operation1`",`"Operation2`",`"PositionInFile`",`"FileName`"" | out-file $Dup
+
+foreach ($CKFile in $CKFiles)
+{
+    $content = import-csv ($CKFile.Fullname) -Header "ID","Operation"
+
+    $i = 0
+
+    foreach ($record in $1008)
+    {
+        $i++
+        
+        $originalAdd = $content | Where-object {$_.ID -eq ($record.ID)}
+            
+        if ($originalAdd)
+        { "`"$($record.ID)`",`"$($record.Operation)`",`"$($originalAdd.Operation)`",`"$i`",`"$($CKFile.name)`"" | out-file $Dup -append }
+        
+        if($i%10 -eq 0)
+        {
+            $i | out-file '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\CK\log.log' -Append
+        }
+
+    }
+
+}
+#>
+<#	
+#Import-Module ActiveDirectory
+'-----------' | out-file '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\test.txt' -append 
+$host | out-file '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\test.txt' -append
+'-----------' | out-file '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\test.txt' -append 
+$([Environment]::Is64BitProcess) | out-file '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\test.txt' -append
+$(Get-ExecutionPolicy) | out-file '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\test.txt' -append
+#Get-ADGroupMember -Identity ".cig.databureau.oncall" | out-file '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\test.txt' -append
+#>
+
+<#
+start-transcript '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\scripttrans.log'
+'started'
+'193730'
+    $(get-childitem "\\valwinlvmls001\Share\DataTransfers\SDQ\Outbound\DQR\193730 - BOSMortgages\193730 - 81 - * - * - BOS Mortgages.xlsx")[0].Name.Split('-')[2].Trim()
+'178367'
+    $(get-childitem "\\valwinlvmls001\Share\DataTransfers\SDQ\Outbound\DQR\178367 - LloydsBankMortgages\178367 - 351 - * - * - Lloyds Bank Mortgages.xlsx")[0].Name.Split('-')[2].Trim()
+'271337'
+    $(get-childitem "\\valwinlvmls001\Share\DataTransfers\SDQ\Outbound\DQR\271337 - IntelligentFinance-Mortgages\271337 - 391 - * - * - Intelligent Finance - Mortgages.xlsx")[0].Name.Split('-')[2].Trim()
+'566610'
+    $(get-childitem "\\valwinlvmls001\Share\DataTransfers\SDQ\Outbound\DQR\566610 - LloydsBankingGroup\566610 - 815 - * - * - Lloyds Banking Group.xlsx")[0].Name.Split('-')[2].Trim()
+'193730'
+    $(get-childitem "\\valwinlvmls001\Share\DataTransfers\SDQ\Outbound\DQR\193730 - BOSMortgages\193730 - 81 - * - * - BOS Mortgages.xlsx")[0].Name.Split('-')[3].Trim()
+'178367'
+    $(get-childitem "\\valwinlvmls001\Share\DataTransfers\SDQ\Outbound\DQR\178367 - LloydsBankMortgages\178367 - 351 - * - * - Lloyds Bank Mortgages.xlsx")[0].Name.Split('-')[3].Trim()
+'271337'
+    $(get-childitem "\\valwinlvmls001\Share\DataTransfers\SDQ\Outbound\DQR\271337 - IntelligentFinance-Mortgages\271337 - 391 - * - * - Intelligent Finance - Mortgages.xlsx")[0].Name.Split('-')[3].Trim()
+'566610'
+    $(get-childitem "\\valwinlvmls001\Share\DataTransfers\SDQ\Outbound\DQR\566610 - LloydsBankingGroup\566610 - 815 - * - * - Lloyds Banking Group.xlsx")[0].Name.Split('-')[3].Trim()
+  
+'finished'
+stop-transcript
+#>
+
+# test-path "\\cig.local\data\AppData\SFTP\Data\Usr\Consumer\1stCreditLtd\"
+
+
+<#
+$thepath = "\\cig.local\data\AppData\SFTP\Data\Usr\Consumer\" 
+
+$hidden_or_system = [System.IO.FileAttributes]::Hidden -bor [System.IO.FileAttributes]::System
+
+Get-ChildItem -Path $thepath -Force | ForEach-Object {
+    if ($_.Attributes -band $hidden_or_system) {
+        "A hidden or system item: $($_.FullName)"
+    }
+    else
+    {
+      $_.Name   
+    }
+}
+#>
+<#
+$FolderToCreateRoot = '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\CarmoolaLimited1\Adhoc\'
+
+remove-item $(Join-Path $FolderToCreateRoot 'InToTU')
+remove-item $(Join-Path $FolderToCreateRoot 'OutFromTU')
+
+
+
+New-Item -ItemType directory -Path $(Join-Path $FolderToCreateRoot 'In to Callcredit')
+New-Item -ItemType directory -Path $(Join-Path $FolderToCreateRoot 'Out from Callcredit')
+
+mkdir '\\valwinlvapp030\cobrashare$\EFTaccessTest\'
+
+
+if (Test-Path '\\valwinlvapp030\cobrashare$\EFTaccessTest\')
+{
+	'test' | out-file '\\valwinlvapp030\cobrashare$\EFTaccessTest\file.txt'
+	
+	if (Test-Path '\\valwinlvapp030\cobrashare$\EFTaccessTest\')
+	{
+		remove-item '\\valwinlvapp030\cobrashare$\EFTaccessTest\file.txt'
+	}
+}
+#>
+<#
+Start-Transcript '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\PCI_AUDIT.log'
+
+$ScriptFolder  = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\PS_File_list_delta\'
+$ConfigFoldersToScan               = join-path $ScriptFolder 'Config_folders_to_scan.txt'
+
+$LastIterationFileListPath         = join-path $ScriptFolder 'PCI_AUDIT_File_List_20230609.csv'
+
+$DTP_AccountExclusionsPath    = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\DTP\DTP_Form\Validation\Data\DTP_AccountExclusions.csv'
+
+$IgnoreIfPathContains         = 'test\\|Credit\\-' 
+
+$DTP_AccountExclusions = Import-csv $DTP_AccountExclusionsPath -Delimiter ";" -Encoding UTF8
+    forEach ($DTP_AccountExclusion in $DTP_AccountExclusions) 
+       { $IgnoreIfPathContains += "|\\$($DTP_AccountExclusion.Area)\\$($DTP_AccountExclusion.Account)\\" }
+
+$FoldersToScan   = Get-Content $ConfigFoldersToScan
+$CurrentFileList = @()
+
+    forEach ($FolderToScan in $FoldersToScan)
+    {
+        Write-Host "Getting current file list from folder: $FolderToScan"
+        $CurrentFileList += @( (Get-ChildItem -Recurse -File $FolderToScan | Where-Object { $_.FullName -notmatch $IgnoreIfPathContains } ) | select-object FullName, length, LastWriteTime, CreationTime)
+    }
+
+    # Remove last iteration list and save current list for future comparison
+    $CurrentFileList | Export-Csv -path $LastIterationFileListPath -NoTypeInformation -Encoding UTF8
+
+Stop-Transcript
+#>
+<#
+Start-Transcript '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\CreditCheck.log'
+
+$FolderLocations = @()
+$FoldersToRemove = @()
+#$FolderLocations += '\\cig.local\data\AppData\ConnectDirect\'
+#$FolderLocations += '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\'
+$FolderLocations += '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\'
+
+foreach ($FolderLocation in $FolderLocations)
+{
+    $FoldersPresent = get-childitem -LiteralPath $FolderLocation -Directory -Recurse | where-object {$_.LastWriteTime -lt $((get-date).AddMonths(-12))}
+
+    foreach ($FolderPresent in $FoldersPresent)
+    {
+        $HasSubItems = $False
+
+        $HasSubItems = get-childitem -LiteralPath $FolderPresent.FullName -Recurse | where-object {$_.LastWriteTime -ge $((get-date).AddMonths(-12))}
+
+        if (!$HasSubItems)
+        {
+            $FoldersToRemove += $FolderPresent
+        }
+    }
+}
+
+$FoldersToRemove | sort-object -Descending | Select-Object -Property FullName, LastWriteTime | out-file '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\test\folders.txt'
+
+Stop-Transcript
+
+
+Start-Transcript '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\CPUCheck.log'
+
+$totalRam = (Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property capacity -Sum).Sum
+$Counter = 10
+while($counter -gt 0) {
+    $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $cpuTime = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
+    $availMem = (Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue
+    $date + ' > CPU: ' + $cpuTime.ToString("#,0.000") + '%, Avail. Mem.: ' + $availMem.ToString("N0") + 'MB (' + (104857600 * $availMem / $totalRam).ToString("#,0.0") + '%)'
+    Start-Sleep -s 1
+
+    --$counter
+}
+
+Stop-Transcript
+#>
+<#
+Start-Transcript '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\RemoveSubfoldersFromBItoCobra.log'
+
+
+$folders = gci '\\valwinlvsql047\data\Working\SecureTransferArea\Outbound\RepeatTransfers\BatchMI\' -directory
+#$folders = gci '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\FolderCleanUp\' -directory
+
+foreach ($folder in $folders)
+{
+    if ((gci $folder.fullname -file -recurse).Count -eq 0)
+    {
+		remove-item $folder.fullname -Force -Recurse
+        write-host "removed $folder"
+    }
+}
+
+Stop-Transcript
+#>
+
+#Start-Transcript '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\111.log'
+
+<#
+$LastIterationFileListPath         = join-path $ScriptFolder 'PCI_AUDIT_File_List_20230807.csv'
+
+$FolderToScan   = '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\Amex\'
+
+        Write-Host "Getting current file list from folder: $FolderToScan"
+        $CurrentFileList += @( (Get-ChildItem -Recurse -File $FolderToScan | select-object FullName, length, LastWriteTime, CreationTime)
+    
+
+    # Remove last iteration list and save current list for future comparison
+    $CurrentFileList | Export-Csv -path $LastIterationFileListPath -NoTypeInformation -Encoding UTF8
+#>
+<#
+move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\Sent\SAAL_7753-01_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\'
+#move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\Sent\SAAL_4385-35_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\'
+#move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\Sent\SAAL_4385-22_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\'
+move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\Sent\SAAL_2110-41_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\'
+#move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\Sent\SAAL_7753-07_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\'
+#move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\Sent\SAAL_7754-01_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\'
+#move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\Sent\SAAL_7754-02_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\'
+move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\Sent\SAAL_3289-99_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\'
+move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\Sent\SAAL_7753-04_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\'
+#move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\Sent\SAAL_7753-05_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\'
+#move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\Sent\SAAL_7753-03_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jul23\'
+move-item '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\Sent\SAAL_7753-02_????.pdf' '\\VALWINLVSQL046\Share Amend Audit Credentials\Jun23\'
+
+#>
+
+<#
+$FolderName       = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Logs\ReadLogToSQL_ProcessControl\'
+$TargetFolderName = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\ReadLogToSQL\'
+
+$Folders=@()
+#$Folders+= "\\cig.local\data\AppData\ConnectDirect\Send\CapitalOne\CreditWise"
+#$Folders+= "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\FileFinder\"
+#$Folders+= "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Triggers\FileFinder\"
+#$Folders+= "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\ReadLogToSQL\"
+$Folders+= '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Logs\ReadLogToSQL\'
+#$Folders+= '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\COBRA_Receipt\FileLogs\'
+
+$Users=@()
+#$Users += "cig\GDO_Danny"
+#$Users += "cig\GDO_Craigpr"
+#$Users += "cig\GDO_BenP"
+#$Users += "cig\GDO_HayleyT"
+#$Users += "cig\GD0_RyanM"
+#$Users += "cig\.CIG.DataBureau.OnCall"
+$users += "CIG\SVC_LV_DataBureau" # this is the second Connect Direct account that needs modify permissions to be able to create triggers
+
+$Permissions = "Modify"
+
+foreach($FolderName in $Folders) {
+    foreach($UserName in $Users) {
+        $Acl = Get-Acl $FolderName
+        $Ar = New-Object  system.security.accesscontrol.filesystemaccessrule($UserName,"Modify","ContainerInherit, ObjectInherit", "None","Allow")
+        $Acl.SetAccessRule($Ar)
+        Set-Acl $FolderName $Acl
+    }
+}
+   
+
+for ($i = 30; $i -ge 0; $i--) {
+    $a = Get-Counter '\Processor(_Total)\% Processor Time'
+    Write-host "$($a.TimeStamp) $($a.CounterSamples.CookedValue)"
+    #Start-Sleep 1
+}
+ #>
+ 
+# write-host $EFT_CONTEXT
+Start-Transcript '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\smb.log'
+
+#write-host $($EFT_CONTEXT.GetVariable("SERVER.NODE_NAME"))
+#write-host $($EFT_CONTEXT.GetVariable("EVENT.TRANSACTION_ID"))
+#$EFT_CONTEXT.SetVariable('_ExclusionStatus','ExcludeTheFile') #$($EFT_CONTEXT.GetVariable("EVENT.TRANSACTION_ID")))
+#write-host $($EFT_CONTEXT.GetVariable("_ExclusionStatus"))
+
+#remove-item '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\Triggers\Automated\ToLoad\'
+
+# curl 'https://www.gov.uk/bank-holidays.json' | ConvertFrom-Json
+#
+#$FolderName = "\\cig.local\data\AppData\SFTP\Data\Usr\DataOut\DnB\"
+
+#$aa = Get-Acl $FolderName
+
+#write-host  $aa.Access.IdentityReference # | % { write-host $_.Access }
+
+
+#$file = get-item '\\cig.local\data\AppData\SFTP\Data\Usr\DataOut\DnB\Sent\CC_20240116_080015.xml'
+
+#write-host $file.GetAccessControl().Owner
+
+#copy-item '\\valwinlvmls001\Share\Archive\AutoArchive\SHARE\2023\10\SHARE_CD_Barclays_20231006_163813_519302_06102023.dat.gz.zip.pgp' '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\gj'
+<#
+$Folders=@()
+#$Folders+= "\\cig.local\data\AppData\ConnectDirect\Send\CapitalOne\CreditWise"
+#$Folders+= "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\FileFinder\"
+#$Folders+= "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Triggers\FileFinder\"
+#$Folders+= "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Triggers\Automated\ToLoad\"
+$Folders+= "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\logs\CDP_generic\"
+
+$Users=@()
+#$Users += "cig\GDO_Danny"
+#$Users += "cig\GDO_Craigpr"
+#$Users += "cig\GDO_BenP"
+#$Users += "cig\GDO_HayleyT"
+#$Users += "cig\GDO_RyanM"
+#$Users += "cig\.CIG.DataBureau.OnCall"
+$users += "CIG\dataops" # this is the second Connect Direct account that needs modify permissions to be able to create triggers
+#$Users += "cig\GDO_GediminasJ"
+
+$Permissions = "Modify"
+
+foreach($FolderName in $Folders) {
+    foreach($UserName in $Users) {
+        $Acl = Get-Acl $FolderName
+        $Ar = New-Object  system.security.accesscontrol.filesystemaccessrule($UserName,"Modify","ContainerInherit, ObjectInherit", "InheritOnly","Allow")
+        $Acl.SetAccessRule($Ar)
+        Set-Acl $FolderName $Acl
+    }
+}
+#>
+
+Get-SmbConnection
+
+
+#$stuff = $file | Select-Object @{N='Owner';E={$_.GetAccessControl().Owner}} 
+#write-host $stuff.Owner
+Stop-Transcript
+
+
+
+Algis
+
+<#
+Param (
+    [string]$MyParameter = ''
+)#>
+
+$Logfile =        '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_AA\AdHoc_PS_output.txt'
+$TranscriptFile = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_AA\AdHoc_PS_transcript.txt'
+Start-Transcript -path $TranscriptFile
+
+#$ValuefromArgs = $args[0];
+#$ValuefromArgs | out-file -filepath $Logfile
+#$MyParameter | out-file -filepath $Logfile
+
+#Rename-Item -Path '\\cig.local\data\appdata\SFTP\Data\Usr\ElectoralRole\East Cambridgeshire District Council\ - 2nd interim for NPR_CreditReferenceAgency_20220411_092259.csv' -NewName '2nd interim for NPR_CreditReferenceAgency_20220411_092259.csv'
+
+
+<#Remove
+remove-item -Path '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\Liberata\CallTrace\OutFromTU\SPD\' -Force #-Recurse
+remove-item -Path '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\Liberata\CallTrace\OutFromTU\' -Force #-Recurse
+#>
+
+<#Create folder
+New-Item -ItemType directory -Force -Path '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\TEST\Triggers\CallValidate\Inbound\Overdue\'
+New-Item -ItemType directory -Force -Path '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\Callvalidate\BatchFiles\TestAccount\BatchData\ToProcess\'
+#>
+
+
+
+<#Move or copy file
+$From = '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\Affordability\Out from Callcredit\CDA0010334_BATCHAR3_202405_1.zip'
+$To   = '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\Affordability\Out from Callcredit\Sent\'
+move-item -path $From -destination $To
+
+$From = '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\Affordability\Out from Callcredit\CDA0010334_BATCHAR3_202405_1.zip.trg'
+move-item -path $From -destination $To
+
+$From = '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\Affordability\Out from Callcredit\CDA0010334_BATCHAR3_202405_2.zip'
+move-item -path $From -destination $To
+
+#Move
+#Remove-item -LiteralPath $From -Force
+#>
+
+
+#"Delivery Trigger" | out-file "\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\Affordability\Out from Callcredit\Hold\dummy.trg" -force
+
+#Get a list of files in folder and subfolders
+$FoldersToCheck = @()
+
+$FoldersToCheck += '\\cig.local\data\AppData\Shape\DSA\FileTransfers\Outbound\LBG\BatchAR\To_Client\'
+$FoldersToCheck += '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\Affordability\Out from Callcredit\'
+$FoldersToCheck += '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\Affordability\Out from Callcredit\Sent\'
+$FoldersToCheck += '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\Affordability\Out from Callcredit\Hold\'
+
+
+#$FoldersToCheck += '\\VALWINLVSQL046\Share Amend Audit Reports\'
+#$FoldersToCheck += '\\VALWINLVSQL046\Share Amend Audit Reports\May23\'
+#$FoldersToCheck += '\\VALWINLVSQL046\Share Amend Audit Reports\May23\Sent\'
+#$FoldersToCheck += '\\VALWINLVSQL046\Share Amend Audit Credentials\'
+#$FoldersToCheck += '\\VALWINLVSQL046\Share Amend Audit Credentials\Feb23\'
+#$FoldersToCheck += '\\VALWINLVSQL046\Share Amend Audit Credentials\Feb23\Sent\'
+#$FoldersToCheck += '\\PLLWINLVSQL012\Share Amend Audit Credentials\Apr22\Sent\'
+#$FoldersToCheck += '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\Vanquis\SHARE\OutfromCallcredit\'
+
+#$FoldersToCheck += '\\cig.local\data\AppData\SFTP\Data\Usr\'
+
+
+#
+"Get a list of child items in folders"  | out-file -filepath $Logfile
+
+foreach ($FolderToCheck in $FoldersToCheck)
+{
+    "Folder: $FolderToCheck"  | out-file -filepath $Logfile -Append
+
+    #Look for old files
+    #$Days = -46
+    #$ChildItems = Get-ChildItem -Path $FolderToCheck -File -force -Recurse | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays($Days) -and $_.CreationTime -lt (Get-Date).AddDays($Days) } | select-object -ExpandProperty fullname
+    
+    $ChildItems = Get-ChildItem -Path $FolderToCheck -force | select-object name, length, LastWriteTime, CreationTime   #My default
+    #$ChildItems = Get-ChildItem -Path $FolderToCheck -force | select-object -ExpandProperty name   #For looping through one folder below
+    #$ChildItems = Get-ChildItem -Path $FolderToCheck -File -force -Recurse | select-object -ExpandProperty fullname
+    #$ChildItems = Get-ChildItem -Path $FolderToCheck -Directory -force -Recurse | select-object -ExpandProperty fullname
+
+    $ChildItems | out-file -filepath $Logfile -Append
+
+
+    <#Loop through one level of child folders
+    foreach ($ChildItem in $ChildItems)
+    {
+        "Child folder: $ChildItem"  | out-file -filepath $Logfile -Append
+    
+    
+        $ChildFolder = join-path $FolderToCheck $ChildItem
+    
+        $ChildsOfChildFolder = Get-ChildItem -Path $ChildFolder -force | select-object name, length, LastWriteTime
+        #$ChildsOfChildFolder = Get-ChildItem -Path $ChildFolder -force | select-object -ExpandProperty name
+    
+        $ChildsOfChildFolder | out-file -filepath $Logfile -Append
+
+    }#>
+
+    
+    <#Get Inf about access rights
+    try { $TestAccess = Get-Acl $FolderToCheck | Format-Table -Wrap }
+    catch { "Get-Acl failed" | out-file -filepath $Logfile -Append }
+    $TestAccess | out-file -filepath $Logfile -Append
+    #>
+    
+}
+#>
+
+
+
+
+
+<# Checksum
+$FilePathToChecksum = '\\valdotcssvm002\SASANALYTICS\DataTransferArea\outbound\Barclays\Barclays Test Files\BSB_Sample.txt'
+Get-FileHash $FilePathToChecksum -Algorithm MD5 | out-file -filepath "$FilePathToChecksum$('_checksum.txt')"
+#>
+
+
+
+<# Get folder size
+    $visi = "{0:N2} MB" -f ((Get-ChildItem '\\cig.local\data\appdata\SFTP\Data\Usr\Credit\Arvato - Glasgow\SHARE\' -Recurse | Measure-Object -Property Length -Sum -ErrorAction Stop).Sum / 1MB)
+    $visi | out-file \\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\TestGenericUserAlertChecks\test.txt
+#>
+
+<# Grant permissions
+Start-Transcript -path $TranscriptFile
+[string]$FolderName = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Triggers\AutoArchive\OnHold\"
+[string]$UserName = "CIG\dataops"
+
+$Acl = Get-Acl $FolderName
+#$Ar = New-Object  System.Security.AccessControl.FileSystemAccessRule($UserName, "FullControl", "ContainerInherit, ObjectInherit", "InheritOnly","Allow")
+$Ar = New-Object  System.Security.AccessControl.FileSystemAccessRule($UserName, "Modify", "ContainerInherit, ObjectInherit", "None","Allow")
+$Acl.SetAccessRule($Ar)
+#$Acl.RemoveAccessRuleAll($Ar)
+
+#Set-Acl -Path $FolderName -AclObject $Acl
+
+(Get-Item $FolderName).SetAccessControl($acl)
+
+Stop-Transcript
+#>
+
+<#Check if file is locked, opened by someone else
+Start-Transcript -Path "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_AA\AdHoc_PS_transcript.txt"
+$FileStream = [System.IO.File]::Open("\\cig.local\data\AppData\SFTP\Data\Usr\DataOut\DnB\CC_20190830_080017.xml",'Open','Write')
+$FileStream.Close()
+$FileStream.Dispose()
+Stop-Transcript
+#>
+
+
+<#Find and stop running PS skript, started by EFT
+#Stop-Process -id 68688
+
+Get-Process | ? {$_.ProcessName -eq 'powershell'} | select ID, StartTime | out-file -filepath $Logfile -Append
+#Get-Process -ID 6888 | Select-Object *
+#>
+
+
+<#List EFT commands
+$node1 = "VALWINLVEFT005"
+$node2 = "VALWINLVEFT006"
+$port = "1100"
+
+$Credentials = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\PS_Script_Archiving\EFTLocalSite($ENV:username).json"
+$o = Get-Content -Path $Credentials -Encoding UTF8 -Raw | ConvertFrom-Json
+$Cred = New-Object -TypeName PSCredential $O.Username, ($o.Password | ConvertTo-SecureString)
+
+$user = $Cred.Username
+$pass = $Cred.GetNetworkCredential().Password
+
+$EFTServer = New-Object -ComObject "SFTPComInterface.CIServer"
+$EFTServer.Connect($node1, $port, $user, $pass)
+
+$EFTSite = $EFTServer.Sites().Item(0)
+
+$EFTSite.GetCommands() | out-file -filepath $Logfile
+#>
+
+
+<#
+$totalRam = (Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property capacity -Sum).Sum
+For ($i=0; $i-le 5; $i++)
+{
+    $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $cpuTime = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
+    $availMem = (Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue
+    $date + ' > CPU: ' + $cpuTime.ToString("#,0.000") + '%, Avail. Mem.: ' + $availMem.ToString("N0") + 'MB (' + ((104857600 * $availMem) / $totalRam).ToString("#,0.0") + '%)' | Out-File "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\EFTServerLoad.txt" -append
+    Start-Sleep -s
+}
+#>
+
+<# Get server fingerprint
+ConvertTo-SecureString (get-content "\\cig.local\data\AppData\SFTP\Data\Usr\databureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\New Text Document.txt") -AsPlainText -Force | ConvertFrom-SecureString | Out-File "\\cig.local\data\AppData\SFTP\Data\Usr\databureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\file.txt"
+$username = "DataOpsAdmin"
+$SecurePassword = Get-Content "\\cig.local\data\AppData\SFTP\Data\Usr\databureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\file.txt" | ConvertTo-SecureString
+$Cred = new-object -typename System.Management.Automation.PSCredential -argumentlist $username, $SecurePassword
+$Credentials = '\\cig.local\data\AppData\SFTP\Data\Usr\databureau\Configuration\Scripts\PS_Script_Archiving\EFTLocalSite(SVC-LV-EFT).json'
+$Cred | Select Username, @{n="Password"; e={$_.password | ConvertFrom-SecureString}} | ConvertTo-Json | Set-Content -Path $Credentials -Encoding UTF8
+#>
+
+
+
+
+<# Find files older than 45 days
+
+$SFTP_Folder = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\Test_AA\'
+
+$Days = -2
+
+"Looking for files older than $((Get-Date).AddDays($Days))"  | out-file -filepath $Logfile
+
+$OldFiles = Get-ChildItem -Path $SFTP_Folder -Recurse | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays($Days) -or $_.CreateTime -lt (Get-Date).AddDays($Days) } | select-object name, LastWriteTime, CreationTime
+
+
+#Get-ChildItem $FolderToCheck -File -Recurse | % {$_.LastWriteTime = (Get-Date)}
+$ChildItems = Get-ChildItem -Path $FolderToCheck -File -force -Recurse | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-46) -and $_.CreationTime -lt (Get-Date).AddDays(-46) } | select-object name, LastWriteTime, CreationTime
+
+
+
+$OldFiles | out-file -filepath $Logfile -Append
+#>
+
+
+<# Row count
+$RowCount = (Get-Content '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\CallMonitor\Out from Callcredit\Sent\TriggerOutput_127_20230402.csv').Length
+"RowCount: $RowCount" | out-file -filepath $Logfile -Append
+#>
+
+
+<# Find out PGP key ID
+$EncryptedFilePath = '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\Nationwide\Affordability\In to Callcredit\nbscabsbtrigger_control_01042023.sas7bdat.pgp'
+\\valwinlvmls001\Share\Services\Software\gnuPGP\gpg.exe --pinentry-mode cancel --list-packets $EncryptedFilePath
+#>
+
+
+'Finished' | out-file -filepath $Logfile -Append
+Stop-Transcript
+
+
+Ignas 
+
+
+
+<#
+Param (
+    [string]$MyParameter = ''
+)#>
+$TranscriptFile = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_IS\AdHoc_PS_transcript.txt'
+Start-Transcript -path $TranscriptFile
+<#
+$Logfile =        '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_AA\AdHoc_PS_output.txt'
+$TranscriptFile = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_AA\AdHoc_PS_transcript.txt'
+
+#$ValuefromArgs = $args[0];
+#$ValuefromArgs | out-file -filepath $Logfile
+#$MyParameter | out-file -filepath $Logfile
+
+#Rename-Item -Path '\\cig.local\data\appdata\SFTP\Data\Usr\ElectoralRole\East Cambridgeshire District Council\ - 2nd interim for NPR_CreditReferenceAgency_20220411_092259.csv' -NewName '2nd interim for NPR_CreditReferenceAgency_20220411_092259.csv'
+#>
+<# Move or copy file
+
+
+$From = '\\valwinlvmls001\Share\DataTransfers\DataAssets\OutBound\RepeatTransfers\ToDataServices\Platform\Copy of CMA account list (TU).xlsx'
+$To   = '\\valwinlvmls001\Share\DataTransfers\DataAssets\OutBound\RepeatTransfers\ToDataServices\Platform\InProgress\'
+
+copy-item -path $From -destination $To -force
+#move-item -path $From -destination $To -Force
+
+
+#>
+
+
+
+<#New-Item -Path '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_IS\test' -ItemType Directory
+Start-Transcript -path $TranscriptFile
+$path_to_file= "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\CobraConsole\test.txt"
+$url = "http://bidars.cig.local/ReportServer/Pages/ReportViewer.aspx?/Batchworkflow/Business%20MI/TrueVision%20ClientMI&JobId={JobId}"
+$JobNumber = "CDA0007780"
+$Job = $url.Replace('{JobId}', $JobNumber)
+$WebClient = New-Object System.Net.WebClient
+$WebClient.DownloadFile($Job,$path_to_file)
+Stop-Transcript
+#>
+#Remove
+
+
+remove-item '\\valwinlvmls001\Share\DataTransfers\DataAssets\OutBound\RepeatTransfers\ToDataServices\Platform\Copy of CMA account list (TU).xlsx' -Force 
+
+#>
+
+#
+
+#Get a list of files in folder and subfolders
+#$FoldersToCheck = @()
+
+#$FoldersToCheck += '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\LloydsSFG2\BSB\Out from Callcredit\'
+
+
+
+#$FoldersToCheck += '\\PLLWINLVSQL012\Share Amend Audit Reports\'
+#$FoldersToCheck += '\\PLLWINLVSQL012\Share Amend Audit Reports\Mar22\'
+#$FoldersToCheck += '\\PLLWINLVSQL012\Share Amend Audit Reports\Mar22\Sent\'
+#$FoldersToCheck += '\\PLLWINLVSQL012\Share Amend Audit Credentials\Mar22\'
+#$FoldersToCheck += '\\PLLWINLVSQL012\Share Amend Audit Credentials\Mar22\Sent\'
+
+#$FoldersToCheck += '\\cig.local\data\AppData\SFTP\Data\Usr\'
+
+
+<#
+"Get a list of child items in folders"  | out-file -filepath $Logfile #-Append
+
+foreach ($FolderToCheck in $FoldersToCheck)
+{
+    "Folder: $FolderToCheck"  | out-file -filepath $Logfile -Append
+
+    #Get-ChildItem $FolderToCheck -File -Recurse | % {$_.LastWriteTime = (Get-Date)}
+    #$ChildItems = Get-ChildItem -Path $FolderToCheck -File -force -Recurse | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-46) -and $_.CreationTime -lt (Get-Date).AddDays(-46) } | select-object name, LastWriteTime, CreationTime
+    
+    $ChildItems = Get-ChildItem -Path $FolderToCheck -force | select-object name, length, LastWriteTime, CreationTime   #My default
+    #$ChildItems = Get-ChildItem -Path $FolderToCheck -force | select-object -ExpandProperty name   #Good for looping through folder below
+    #$ChildItems = Get-ChildItem -Path $FolderToCheck -File -force -Recurse | select-object -ExpandProperty fullname
+    
+    $ChildItems | out-file -filepath $Logfile -Append
+
+    #>
+    <#Loop through one level of child folders
+    foreach ($ChildItem in $ChildItems)
+    {
+        "Child folder: $ChildItem"  | out-file -filepath $Logfile -Append
+    
+    
+        $ChildFolder = join-path $FolderToCheck $ChildItem
+    
+        $ChildsOfChildFolder = Get-ChildItem -Path $ChildFolder -force | select-object name, length, LastWriteTime
+        #$ChildsOfChildFolder = Get-ChildItem -Path $ChildFolder -force | select-object -ExpandProperty name
+    
+        $ChildsOfChildFolder | out-file -filepath $Logfile -Append
+
+    }#>
+
+    
+    <#Get Inf about access rights
+    try { $TestAccess = Get-Acl $FolderToCheck | Format-Table -Wrap }
+    catch { "Get-Acl failed" | out-file -filepath $Logfile -Append }
+    $TestAccess | out-file -filepath $Logfile -Append
+    
+    
+}
+#>
+
+
+
+#Get-Content '\\PLLWINLVSQL016\DataServices\Transfer\OutBound\RepeatTransfers\TTP130265\Sent\ZCTP.CCREDIT.POLOANS.TEXTRACT.FILE.csv' -First 1 | out-file -filepath $Logfile -Append
+
+
+#Get folder size
+<#
+    $visi = "{0:N2} MB" -f ((Get-ChildItem '\\cig.local\data\appdata\SFTP\Data\Usr\Credit\Arvato - Glasgow\SHARE\' -Recurse | Measure-Object -Property Length -Sum -ErrorAction Stop).Sum / 1MB)
+    $visi | out-file \\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\TestGenericUserAlertChecks\test.txt
+#>
+
+<# Grant permissions
+Start-Transcript -path $TranscriptFile
+[string]$FolderName = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Triggers\AutoArchive\OnHold\"
+[string]$UserName = "CIG\dataops"
+
+$Acl = Get-Acl $FolderName
+#$Ar = New-Object  System.Security.AccessControl.FileSystemAccessRule($UserName, "FullControl", "ContainerInherit, ObjectInherit", "InheritOnly","Allow")
+$Ar = New-Object  System.Security.AccessControl.FileSystemAccessRule($UserName, "Modify", "ContainerInherit, ObjectInherit", "None","Allow")
+$Acl.SetAccessRule($Ar)
+#$Acl.RemoveAccessRuleAll($Ar)
+
+#Set-Acl -Path $FolderName -AclObject $Acl
+
+(Get-Item $FolderName).SetAccessControl($acl)
+
+Stop-Transcript
+#>
+
+<#Check if file is locked, opened by someone else
+Start-Transcript -Path "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_AA\AdHoc_PS_transcript.txt"
+$FileStream = [System.IO.File]::Open("\\cig.local\data\AppData\SFTP\Data\Usr\DataOut\DnB\CC_20190830_080017.xml",'Open','Write')
+$FileStream.Close()
+$FileStream.Dispose()
+Stop-Transcript
+#>
+
+<#Create folder
+New-Item -ItemType directory -Force -Path '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\Past Due Credit\CallTrace\In to Callcredit\OccupierLookupExpress'
+New-Item -ItemType directory -Force -Path '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\Past Due Credit\CallTrace\Out from Callcredit\OccupierLookupExpress'
+New-Item -ItemType directory -Force -Path '\\cig.local\data\AppData\SFTP\Data\Usr\Credit\Past Due Credit\CallTrace\In to Callcredit\OccupierLookupPlus'
+#>
+
+
+<#Find and stop running PS skript, started by EFT
+#Stop-Process -id 68688
+
+Get-Process | ? {$_.ProcessName -eq 'powershell'} | select ID, StartTime | out-file -filepath $Logfile -Append
+#Get-Process -ID 6888 | Select-Object *
+#>
+
+
+<#List EFT commands
+$node1 = "VALWINLVEFT005"
+$node2 = "VALWINLVEFT006"
+$port = "1100"
+
+$Credentials = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\PS_Script_Archiving\EFTLocalSite($ENV:username).json"
+$o = Get-Content -Path $Credentials -Encoding UTF8 -Raw | ConvertFrom-Json
+$Cred = New-Object -TypeName PSCredential $O.Username, ($o.Password | ConvertTo-SecureString)
+
+$user = $Cred.Username
+$pass = $Cred.GetNetworkCredential().Password
+
+$EFTServer = New-Object -ComObject "SFTPComInterface.CIServer"
+$EFTServer.Connect($node1, $port, $user, $pass)
+
+$EFTSite = $EFTServer.Sites().Item(0)
+
+$EFTSite.GetCommands() | out-file -filepath $Logfile
+#>
+
+
+<#
+$totalRam = (Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property capacity -Sum).Sum
+For ($i=0; $i-le 5; $i++)
+{
+    $date = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $cpuTime = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
+    $availMem = (Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue
+    $date + ' > CPU: ' + $cpuTime.ToString("#,0.000") + '%, Avail. Mem.: ' + $availMem.ToString("N0") + 'MB (' + ((104857600 * $availMem) / $totalRam).ToString("#,0.0") + '%)' | Out-File "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\EFTServerLoad.txt" -append
+    Start-Sleep -s
+}
+#>
+
+<# Get server fingerprint
+ConvertTo-SecureString (get-content "\\cig.local\data\AppData\SFTP\Data\Usr\databureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\New Text Document.txt") -AsPlainText -Force | ConvertFrom-SecureString | Out-File "\\cig.local\data\AppData\SFTP\Data\Usr\databureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\file.txt"
+$username = "DataOpsAdmin"
+$SecurePassword = Get-Content "\\cig.local\data\AppData\SFTP\Data\Usr\databureau\Configuration\Scripts\Test\AdHoc_PowerShell_script_GJ\file.txt" | ConvertTo-SecureString
+$Cred = new-object -typename System.Management.Automation.PSCredential -argumentlist $username, $SecurePassword
+$Credentials = '\\cig.local\data\AppData\SFTP\Data\Usr\databureau\Configuration\Scripts\PS_Script_Archiving\EFTLocalSite(SVC-LV-EFT).json'
+$Cred | Select Username, @{n="Password"; e={$_.password | ConvertFrom-SecureString}} | ConvertTo-Json | Set-Content -Path $Credentials -Encoding UTF8
+#>
+
+
+#'Finished' | out-file -filepath $Logfile -Append
+
+<#
+Check ip files contains strings and amend
+cls
+foreach ($file in $(gci '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Test\dataServices'))
+{
+$file.Name
+compare-object (get-content "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\DTP\Repeat\DataServices\$($file.Name)") $((get-content $file.Fullname).Replace('pllwinlvsql016','CRLWINLVSQL014').Replace('PLLWINLVSQL016','CRLWINLVSQL014'))
+' '
+}
+
+#>
+
+#[string]$sourceDirectory  = "\\valwinlvapp030\CobraShare$\DataTransfers\OutBound\Query_3854_CDA0008202\"
+#[string]$destinationDirectory = "\\cig.local\data\AppData\SFTP\Data\Usr\Credit\HSBCSM\BSB\Out from Callcredit\"
+#Copy-item -Force -Recurse -Verbose $sourceDirectory -Destination $destinationDirectory
+
+#Delete all files in a folder
+#Remove-Item -LiteralPath "\\cig.local\data\AppData\SFTP\Data\Usr\Credit\HSBCSM\BSB\Out from Callcredit\Query_3854_CDA0008202" -Force -Recurse
+<#
+
+Start-Transcript -path $TranscriptFile
+$sourceDirectory  = "\\valwinlvapp030\CobraShare$\DataTransfers\OutBound\Query_3854_CDA0008202\"
+$sourceFiles = Get-ChildItem $sourceDirectory
+$destinationDirectory = "\\cig.local\data\AppData\SFTP\Data\Usr\Credit\HSBCSM\BSB\Out from Callcredit\"
+$exclude = Get-ChildItem -recurse $destinationDirectory
+
+foreach ($file in $sourceFiles)
+{
+$fileToMove = $sourceDirectory + $file
+Write-host $fileToMove
+Copy-item $fileToMove $destinationDirectory -Exclude $exclude
+Write-Host "file copied"
+Start-Sleep -Seconds 10
+}
+"Finished"
+
+Stop-Transcript
+#>
+<#
+Start-Transcript -path $TranscriptFile
+$sourceDirectory  = "\\valwinlvapp030\CobraShare$\DataTransfers\OutBound\Query_3853_CDA0008203"
+$sourcefiles = get-childitem $sourceDirectory  -file -Recurse
+$destinationDirectory = "\\cig.local\data\AppData\SFTP\Data\Usr\Credit\HSBCSM\BSB\Out from Callcredit"
+$exclude = Get-ChildItem -recurse $destinationDirectory
+
+foreach ($file in $sourcefiles)
+{
+Write-Debug $file
+Copy-Item $file.FullName -Destination "$destinationDirectory\$($file.Name)" -Exclude $exclude
+Write-Debug "copied"
+Start-Sleep -Seconds 1.5
+}
+Write-Debug "finished"
+Stop-Transcript
+
+
+Start-Transcript -path $TranscriptFile
+$sourceDirectory  = "\\valwinlvapp030\CobraShare$\DataTransfers\OutBound\Query_3854_CDA0008202"
+#$sourceDirectory = '\\valdotcssvm011\backoffice_shares$\DataOperations\EFTCD\IS_Transfer\test'
+(get-childitem $sourceDirectory).Delete()
+Stop-Transcript
+
+
+
+$location = Get-ChildItem -Filter '*Config.csv' '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\PS_HouseKeeping\'
+$FileList = @()
+
+
+ForEach ($File in $location){
+$Settings = Import-CSV $File.FullName
+
+    ForEach ($Folder in $Settings)
+    {
+        if (($Folder.SearchSubfolders -eq 1) -and ($Folder.Clean -eq 1))
+        {
+            $FileList += Get-ChildItem -Path $Folder.FolderPath -Filter $Folder.Filter -Recurse #| 
+                #Where-Object { $_.lastwritetime -lt (get-date).adddays(-$($Folder.RetentionPeriod)) }    
+        }
+        elseif ($Folder.Clean -eq 1)
+        {
+            $FileList += Get-ChildItem -Path $Folder.FolderPath -Filter $Folder.Filter #| 
+              #  Where-Object { $_.lastwritetime -lt (get-date).adddays(-$($Folder.RetentionPeriod)) }    
+        }
+    }
+$FileList| Out-File '\\valdotcssvm011\backoffice_shares$\DataOperations\EFTCD\IS_Transfer\TOT 486\list.txt'
+
+}
+#>
+
+<#Script to replace servername in content of listed files##
+
+Start-Transaction 
+$filteredFiles = '\\valdotcssvm011\backoffice_shares$\DataOperations\EFTCD\IS_Transfer\TOT 506\unique.txt'
+
+<# Iterate through the list of filtered files and modify their content
+$filteredFiles | Foreach-Object {
+    # Read the content of the file
+    $content = Get-Content -Path $_.FullName
+
+    # Replace the string "VALWINLVSQL007" with "VALWINLVSQL047"
+    
+    #Uncomment the part below before replacement should be implemented
+    $modifiedContent = $content -replace "valwinlvsql007\ANCHOR", "VALWINLVSQL047"
+
+    # Save the modified content back to the file
+    $modifiedContent | Set-Content -Path $_.FullName
+}
+Stop-Transcript
+#>
+
+
+
+<#$FilePath = "\\cig.local\data\Marketing Solutions Departments\Production\Neptune\CallTrace\InTouch\CDA100966\CDA100966_2440_CTOutput.txt"
+$FilePath = "\\cig.local\Data\Marketing Solutions Departments\Production\Public\DataTransfer\InBound\CDA0010092\20112023_NatWest_addressdata_TU_V1.0.xlsx"
+$ziurim = Test-Path $FilePath
+Write-Host $ziurim
+Stop-Transcript
+
+#>
