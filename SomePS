@@ -1,0 +1,1748 @@
+<#######################################################################################################
+
+Created : 2020-08-17 - GJ - TOT 217 - Split orgininal into script, module and config parts
+Updated : 2020-11-18 - GJ - TOT 258 - Allowed target file overwrites in Start-FileCopy and Start-FileMove functions
+									  Added -force to almost all Move-Item'script
+                                      Introducted HTML support in emails.
+Updated : 2020-12-11 - AA - TOT 269 - Fix overwriting in Start-FileCopy and Start-FileMove, when $ToFile has only folder value.
+Updated : 2020-02-23 - GJ - TOT 307 - Added confirmation of completion logging to all actions and made those log entries somewhat uniform
+Updated : 2020-02-26 - GJ - EFT 660 - FileCompression will not re-compress but only encase .zip and similar files
+Updated : 2021-04-29 - GJ - TOT 328 - Added new function: Start-EmptyFolderDelete
+Updated : 2021-05-17 - GJ - TOT 343 - Added new function: Test-PathAdvanced to deal with square brackets in file names: '[' and ']'
+Updated : 2021-05-18 - GJ - TOT 343 - Added new functions: Move-ItemAdvanced and Copy-ItemAdvanced
+Updated : 2021-06-15 - AA - TOT 346 - Use Mutex in Write-Log, so that multiple processes can write to the same log file
+Updated : 2021-07-26 - AA - TOT 358 - Fix function Start-FileCompress to add folders to files names from ExtraFilesToCompress
+Updated : 2021-10-21 - GJ - TOT 333f - Added function Write-Log_DTPOnline in attempt to log all outbound files for DTPOnline service
+Updated : 2021-12-07 - GJ - TOT 396 - Copy-ItemAvanced - fixed expected target path
+									  Start-FileCopy - when checking and dealing with already existing targets, Remove-item function will now use -literalpath
+									  Start-FileMove - when checking and dealing with already existing targets, Remove-item function will now use -literalpath
+Updated : 2021-12-14 - GJ - TOT 364 - Appended -literalpath to some more Remove-item and Get-Childitem functions in Start-FolderDelete, Start-EmptyFolderDelete, Start-FileDelete
+							TOT 369 - Added function Invoke-ExpressionAndCheck
+Updated : 2021-12-22 - GJ - Shortened GUID used with PGPEcnryption temp folders because we have one ER files with very long filename
+Updated : 2022-05-18 - IS - Updated mutex part in the write-log function, if mutex will fail an action won't be stopped processing 							
+Updated : 2022-07-11 - GJ - TOT 461 - added ampersand replacements to $Subject in HTML triggers in Send-Email function
+Updated : 2022-07-20 - GJ - TOT 456 - Added string null or empty checks for subject and recipients before sending warning emails. Disabled Try/Catch around email trigger creation.
+Updated : 2022-07-27 - GJ - TOT 472 - Changed which GUID value is passed to Start-CDTransfer function.
+Updated : 2023-08-17 - GJ - TOT 574 - Changed 7zip decompression string to preserve container folder structure
+                            Added Test-Path check to Start-FileCopy and Start-FileMove functions just before testing if file is not a directory
+                            Added string.isnullorempty evaluation for $EFT_Action.Element("ExecuteAfter").Value
+Updated : 2023-08-22 - GJ - TOT 574 - Increased max number of allowed to delete items from 10 to 15 in function Start-FolderDelete
+Updated : 2023-09-08 - GJ - TOT 587 - Added Send-MailMessage to the Send-Email function
+Updated : 2023-10-19 - GJ - TOT 587 - Switched to SMPT method for email delivery. Email XML files will be saved to backup folder.
+Updated : 2023-12-21 - GJ - TOT 587 - Added support for multiple recipients in SMTP emails
+Updated : 2024-03-28 - GJ - TOT 504 - Added "Global GUID  - $Global:GUID" in attempt to have more info in empty emails
+
+########################################################################################################>
+
+function Write-Log_DTPOnline
+{
+	param(
+			[string]$FileToLog,
+			[string]$FileAction
+		 )
+	
+	# FileToLog should be a destination file.
+	# Trying to capture only outbound files.
+	if ($FileToLog -match "\\\\cig\.local\\data\\AppData\\SFTP\\Data\\Usr\\((Credit)|(Direct Sales)|(Marketing)|(VDMS)|(Consumer)|(DecisionMetrics))\\.*")
+	{
+		$DTPOnlineFileLog = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Configuration\Scripts\PS_File_list_delta\DTP_Events.log"
+		
+		$FileSize = ([System.IO.FileInfo]$FileToLog).Length
+		$FileDTS  = (get-date ([System.IO.FileInfo]$FileToLog).LastWriteTime -format "yyyy-MM-ddTHH:mm:ssK")
+
+		"`"$FileToLog`",`"$FileSize`",`"$FileDTS`",`"$FileAction`"" | out-file $DTPOnlineFileLog -Append -Encoding utf8
+	}
+}
+
+
+function Invoke-ExpressionAndCheck
+{
+    param ( [string]$Expression )
+
+    # The 2>&1 redirects error output to standard output, which allows you to capture the $er object, which is of type ErrorRecord.
+    # If it isn't an error record it won't have an Exception field.
+    $er = (invoke-expression $Expression) 2>&1
+
+    if($er.Exception)
+    {
+        Write-Log "Bespoke Action - FAILED"
+        $Result = $er.Exception
+    }
+    else
+    {
+        $Result = "OK"
+        Write-Log "Bespoke Action - OK"
+    }
+
+    Return $Result
+}
+
+
+function Test-PathAdvanced 
+{
+    param  ( $Path )
+
+    try { if (Test-Path $Path)                                                         { Return $True } } Catch {}
+        
+    try { if (Test-Path -LiteralPath $Path)                                            { Return $True } } Catch {}
+
+    try { if ((gci $(split-path $Path) -filter $(split-path $Path -leaf)).Count -gt 0) { Return $True } } Catch {}
+    
+    Return $False
+}
+
+
+function Move-ItemAdvanced
+{
+	param  ( [string]$SourceItem, [string]$TargetItem, [switch]$Force)
+ 
+    $Err = $null
+
+	try { Move-Item $SourceItem $TargetItem -ErrorAction Stop -force:$Force } catch { $Err = $_ }
+	
+
+    if (Test-PathAdvanced $SourceItem)
+	{
+        $Err = $null
+
+		try { Move-Item -LiteralPath $SourceItem $TargetItem -ErrorAction Stop -force:$Force } catch { $Err = $_ }
+	}	
+
+
+    if (Test-PathAdvanced $SourceItem)
+	{
+        $Err = $null
+
+		try 
+        {  
+            gci $(split-path $SourceItem) -filter $(split-path $SourceItem -leaf) | foreach { `
+                
+                if (!(($_ -is [System.IO.DirectoryInfo]))) 
+                {
+                    try { Move-Item -LiteralPath $_.FullName $TargetItem -ErrorAction Stop -force:$Force } catch { $Err = $_ }
+                }
+            }
+        } 
+        catch { $Err = $_ }
+	}
+    
+    if (!([string]::IsNullOrEmpty($Err)))
+    {
+        Throw $Err
+    }
+}
+
+
+function Copy-ItemAdvanced
+{
+	param  ( [string]$SourceItem, [string]$TargetItem )
+ 
+    $Err = $null
+
+	try {  Copy-Item $SourceItem $TargetItem -ErrorAction Stop } catch { $Err = $_}
+	
+    $ExpectedTarget = $TargetItem # this will always be passed as a full path including target file name  # $(join-path $TargetItem $(split-path $SourceItem -leaf))
+    
+    if ((Test-PathAdvanced $SourceItem) -and !(Test-PathAdvanced $ExpectedTarget))
+	{
+        $Err = $null
+        
+		try { Copy-Item -LiteralPath $SourceItem $TargetItem -ErrorAction Stop } catch { $Err = $_ }
+	}	
+
+
+    if ((Test-PathAdvanced $SourceItem) -and !(Test-PathAdvanced $ExpectedTarget))
+	{
+        $Err = $null
+
+		try 
+        {  
+            gci $(split-path $SourceItem) -filter $(split-path $SourceItem -leaf) | foreach { `
+                
+                if (!(($_ -is [System.IO.DirectoryInfo]))) 
+                {
+                    try { Copy-Item -LiteralPath $_.FullName $TargetItem -ErrorAction Stop } catch { $Err = $_ }
+                }
+            }
+        } 
+        catch { $Err = $_ }
+	}
+ 
+    if (!([string]::IsNullOrEmpty($Err)))
+    {
+        Throw $Err
+    }
+	
+	# when source file names contain brackets copy-item doesn't report error if such files do not exists. In fact in does nothing at all so needs babysitting.
+	if (!(Test-PathAdvanced $ExpectedTarget))
+    {
+        Throw 'Copy Failed'
+    }
+}
+
+function Get-UKTime {
+    $UKTime = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::UTCNow, 'UTC', 'GMT Standard Time')
+    return $UKTime
+}
+
+Function Write-Log
+{
+    param ($LogEntry)
+
+    # Write to log with MUTEX
+    $MutexName = Split-Path $LogFile -Leaf
+    $mtx = New-Object System.Threading.Mutex($false, $MutexName)
+    [void]$mtx.WaitOne()
+    Try
+    {
+        $(Get-UKTime).ToLongTimeString() + " | " + "$ID" + " | " + $LogEntry | out-file  $LogFile -Append -Encoding utf8
+    }
+    Catch
+    {
+        Write-Host 'WARNING: Failed to write to log'
+    }
+	Finally
+	{
+		Try
+		{
+		[void]$mtx.ReleaseMutex()
+		}
+		Catch
+		{	}
+	} 
+	
+}
+
+function Set-CorrectSlashes {
+    param( $PathString, $Origin )
+
+    if (($PathString.Length -gt 0) -and ($Origin.Length -gt 0)) {
+        $ForwardSlashCount = ($Origin.ToCharArray() | Where-Object { $_ -eq '/' } | Measure-Object).Count
+        $BackSlashCount = ($Origin.ToCharArray() | Where-Object { $_ -eq '\' } | Measure-Object).Count
+
+        if ($ForwardSlashCount -gt $BackSlashCount) {
+            $PathString = $PathString.replace("\", "/")
+        }
+        else {
+            $PathString = $PathString.replace("/", "\")
+        }
+
+        Return $PathString # replace("\\", "\").replace("//", "/")) <- this replaced \\ at the start of UNC paths..
+    }
+    else {
+        Return $PathString
+    }
+}
+
+
+Function Get-ParseXmlAndExecuteAction
+{
+    param ( [string]$XmlTrigger )
+
+    if (Test-Path $XmlTrigger) {
+        # Mark the trigger name for later
+        #$XmlTriggerName = split-path $XmlTrigger -leaf
+
+        # Move trigger to InProgress folder.
+        Move-Item $XmlTrigger $InProgressActionsFolder -force | Out-Null
+
+        # Start working with the moved file
+        $XmlTrigger = join-path $InProgressActionsFolder $(split-path $XmlTrigger -leaf) #$XmlTriggerName
+
+        $ActionXml = [System.Xml.Linq.XDocument]::Load($XmlTrigger)
+
+        [System.Xml.Linq.XElement]$EFT_Action = $ActionXml.Element("EFT_Action")
+
+        $StartTimeLog = get-date (Get-UKTime) -format "yyyy-MM-dd HH:mm:ss"
+        $StartTime = Get-UKTime
+
+        [String]$Action = $EFT_Action.Element("ActionType").Value
+        [string]$SourceFile = $EFT_Action.Element("SourceFile").Value
+        [string]$SourceFolder = $EFT_Action.Element("SourceFolder").Value
+        [string]$DestinationFile = $EFT_Action.Element("DestinationFile").Value
+        [string]$DestinationFolder = $EFT_Action.Element("DestinationFolder").Value
+
+        try {
+            [string]$ExecuteAfter = $EFT_Action.Element("ExecuteAfter").Value
+            [datetime]$ExecuteAfter = [datetime]::ParseExact($ExecuteAfter, "yyyy-MM-dd HH:mm:ss", $null)
+
+            if ($ExecuteAfter -ge $StartTime) {
+                Return ("Wait", $EFT_Action, $XmlTrigger)
+            }
+        }
+        catch
+        { }
+
+        # Try/Catch needed since this will throw errors when joining empty values
+        try { $SourceFilePath = join-path $SourceFolder $SourceFile } catch { }
+        try { $TargetFilePath = join-path $DestinationFolder $DestinationFile } catch { }
+
+        $SourceFilePath = Set-CorrectSlashes $SourceFilePath $SourceFolder
+        $TargetFilePath = Set-CorrectSlashes $TargetFilePath $DestinationFolder
+
+		[int]$MinDecompressedCount = 0
+		[int]$MaxDecompressedCount = 20
+
+        try{
+            If (!([string]::IsNullOrEmpty($EFT_Action.Element("MinDecompressedCount").Value)))
+            { [int]$MinDecompressedCount = $EFT_Action.Element("MinDecompressedCount").Value }
+
+            If (!([string]::IsNullOrEmpty($EFT_Action.Element("MinDecompressedCount").Value)))
+            { [int]$MaxDecompressedCount = $EFT_Action.Element("MaxDecompressedCount").Value }
+        }
+        catch {
+            [int]$MinDecompressedCount = 0
+            [int]$MaxDecompressedCount = 20
+        }
+#        try { [int]$MinDecompressedCount = $EFT_Action.Element("MinDecompressedCount").Value } catch { [int]$MinDecompressedCount = 0  }
+ #       try { [int]$MaxDecompressedCount = $EFT_Action.Element("MaxDecompressedCount").Value } catch { [int]$MaxDecompressedCount = 20 }
+
+        # ID used in logs
+        #[string]$Global:ID = $($GUID.Split("-")[0]).Substring(0,8)
+
+        $Global:GUID = $EFT_Action.Element("GUID").Value
+		[string]$ExtraFilesToCompress = ''
+		
+        Write-Log ""
+        Write-Log "Processing Trigger $(split-path $XmlTrigger -leaf)"
+        Write-Log "Action - $Action"
+        if ($Action -eq "BespokeCommand") { Write-Log "Command - $SourceFile" }
+		if ($Action -eq "Compress") {[string]$ExtraFilesToCompress = $EFT_Action.Element("ExtraFilesToCompress").Value}
+
+        switch ( $Action )
+        {
+            'Copy'          { $Result = Start-FileCopy       $SourceFilePath $TargetFilePath  }
+            'Move'          { $Result = Start-FileMove       $SourceFilePath $TargetFilePath  }
+            'Rename'        { $Result = Start-FileRename     $SourceFilePath $DestinationFile }
+            'Compress'      { $Result = try { Start-FileCompress $SourceFilePath $DestinationFolder $DestinationFile $EFT_Action.Element("CompressionFormat").Value $EFT_Action.Element("CompressionPassword").Value $ExtraFilesToCompress } catch { Write-Log $_; Write-Log "File Compression Routine - FAILED"; "$_" } }
+            'Decompress'    { $Result = Start-FileDecompress $SourceFilePath $DestinationFolder $EFT_Action.Element("CompressionPassword").Value.Replace('$','[[DollarSign]]') $MinDecompressedCount $MaxDecompressedCount }
+            'Encrypt'       { $Result = Start-PGPEncrypt     $EFTPGPAutoEncryptFolder $GUID $SourceFilePath $EFT_Action.Element("EncryptionKey").Value }
+            'Decrypt'       { $Result = Start-PGPDecrypt     $EFTPGPAutoDecryptFolder $GUID $SourceFilePath $EFT_Action.Element("EncryptionKey").Value }
+            'CDTransfer'    { $Result = Start-CDTransfer     $SourceFilePath $CDTemplate $CDOutfile $EFT_Action $ID $EFT_Action.Element("CD_GUID").Value }
+            'DeleteFile'    { $Result = Start-FileDelete     $SourceFilePath }
+            'DeleteFolder'  { $Result = Start-FolderDelete   $SourceFolder }
+			'DeleteEmptyFolder' { $Result = Start-EmptyFolderDelete   $SourceFolder }
+            'CreateFolder'  	{ $Result = Start-CreateFolder   $DestinationFolder }
+            'WaitForFile'   	{ $Result = Start-WaitForFile    $SourceFilePath $XmlTrigger}
+            'Email'         	{ $Result = Send-Email           $EFT_Action }
+            #'BespokeCommand'	{ Invoke-Expression -Command $SourceFile -OutVariable Result | out-null; if ($Result -like "*error*") {$Result; Write-Log "Bespoke Action - FAILED"} else {$Result = "OK"; Write-Log "Bespoke Action - OK"}}
+			'BespokeCommand'	{ $Result = Invoke-ExpressionAndCheck $SourceFile }
+        }
+    }
+    else
+    {
+        Write-Log "Cannot Find Trigger - $XmlTrigger"
+    }
+
+    Return ($Result, $EFT_Action, $XmlTrigger)
+}
+
+
+Function Start-WaitForFile
+{
+    param ($SourceFilePath, $XmlTrigger) #[ref]$EFT_Action)
+
+	Write-Log "Waiting for file"
+	Write-Log "To $SourceFilePath"
+	
+    # check if file appeared
+    if (Test-PathAdvanced $SourceFilePath)
+    {
+		Write-Log "File Found - OK"
+        Return "OK"
+    }
+    else
+    {
+        # check if file appeared in alternative location. Used mainly for triggers
+        try
+        {
+            if (Test-Path $EFT_Action.Element("AltWaitFileLocation").Value)
+            {
+				Write-Log "File returned to failed folder - $($EFT_Action.Element("AltWaitFileLocation").Value)"
+                Return "File returned to failed folder"
+            }
+        }
+        catch { Write-host "No alt path set" }
+
+        # if running for the first time, mark current time as start time
+        if ($EFT_Action.Element("WaitStart").Value -eq "")
+        {
+            $EFT_Action.Element("WaitStart").Value = Get-Date (Get-UKTime) -Format "yyyy-MM-dd HH:mm:ss"
+
+            [System.IO.File]::WriteAllText($XmlTrigger, $EFT_Action.ToString());
+
+			#Write-Log "Waiting"
+            Return "Wait"
+        }
+        else
+        {
+            $ActionStarted = [datetime]::parseexact( $EFT_Action.Element("WaitStart").Value, "yyyy-MM-dd HH:mm:ss",$null)
+
+            if ($(New-TimeSpan $ActionStarted $(Get-UKTime)).TotalMinutes -gt [int]$EFT_Action.Element("MaxWaitMins").Value) 
+			{
+				Write-Log "Timed out waiting for file"
+				
+                # file did not appear within preset time span
+                if (($null -ne $EFT_Action.Element("ResetProcessFrom").Value) -and ($EFT_Action.Element("ResetCounter").Value -gt 0)) {
+
+                    $EFT_Action.Element("WaitStart").Value = ""
+                    $EFT_Action.Element("ResetCounter").Value = [int]($EFT_Action.Element("ResetCounter").Value) - 1
+
+                    [System.IO.File]::WriteAllText($XmlTrigger, $EFT_Action.ToString());
+					
+					Write-Log "Resetting Process from action $($EFT_Action.Element("ResetProcessFrom").Value)"
+                    Return "Reset Process"
+                }
+                else
+                {
+                    Return "Timed out waiting for file"
+                }
+            }
+            else {
+				#Write-Log "Waiting"
+                Return "Wait"
+            }
+        }
+    }
+}
+
+
+
+Function Set-ResetTrigger
+{
+    param ($EFT_Action, $XmlTrigger, [switch]$ResetProcess)
+
+    #$EFT_Action.Element("LastAttemptDTS").Value = $StartTimeLog
+
+    [int]$ProcessPriority = $EFT_Action.Element("ProcessPriority").Value
+    [string]$GUID         = $EFT_Action.Element("GUID").Value
+	[string]$CreationDTS  = $EFT_Action.Element("CreationDTS").Value.Split(" ")[0].Replace("-","")
+    [string]$StepSequence = $EFT_Action.Element("StepSequence").Value
+
+    if ($ResetProcess) {
+        try {
+            [string]$ResetProcessFrom = $EFT_Action.Element("ResetProcessFrom").Value
+        }
+        catch { }
+    }
+
+    # Likely, Wait action trigger
+    $CurrentTriggerName = ([string]$ProcessPriority).PadLeft(2,'0') + '_' + $GUID + '_' + ([string]$StepSequence).PadLeft(2,'0') + '.xml'
+
+    # Make details match the current trigger
+    if ($(Split-Path $XmlTrigger -Leaf) -eq $CurrentTriggerName) {
+
+        $ResetTriggers = @()
+
+        # if need to reset whole process, check which triggers should be affected
+        if ($Null -ne $ResetProcessFrom) {
+            for ([int]$i = $ResetProcessFrom; $i -lt $StepSequence; $i++) {
+                $ResetTriggers += $i
+            }
+        }
+
+        # move all required triggers
+        foreach ($TriggerNumber in $ResetTriggers) {
+            $NextTriggerName = '*_' + $GUID + '_' + ([string]$TriggerNumber).PadLeft(2, '0') + '.xml'
+
+            #$NextTriggerFile = join-path (join-path $CompleteActionsFolder $GUID) $NextTriggerName
+			$NextTriggerFile = join-path (join-path (join-path $CompleteActionsFolder $GUID) $CreationDTS)$NextTriggerName
+
+            if (Test-path $NextTriggerFile)
+            {
+                Move-Item $NextTriggerFile $PendingActionsFolder -force
+            }
+            else
+            {
+                #$NextTriggerFile = join-path $CompleteActionsFolder $NextTriggerName
+				$NextTriggerFile = join-path (join-path $CompleteActionsFolder $CreationDTS)$NextTriggerName
+                if (Test-path $NextTriggerFile)
+                {
+                    Move-Item $NextTriggerFile $PendingActionsFolder -force
+                }
+                else
+                {
+                    Write-Log "Failed To reset process from action number $ResetProcessFrom"
+                    Return "Failed To reset process from action number $ResetProcessFrom"
+                }
+            }
+        }
+
+        Move-Item $XmlTrigger $PendingActionsFolder -force
+        #$ToProcessActionsFolder
+
+        if ($ResetProcess) {
+            if ($Null -eq $ResetProcessFrom)
+            { $ResetProcessFrom = $StepSequence }
+
+            $ResetFromTriggerName = '*_' + $GUID + '_' + [string]$ResetProcessFrom.PadLeft(2, '0') + '.xml'
+
+            $ResetTriggerPath = (Get-ChildItem $PendingActionsFolder $ResetFromTriggerName).FullName
+
+            $ActionXml = [System.Xml.Linq.XDocument]::Load($ResetTriggerPath)
+
+            # assuming operators will make sure "ExecuteAfter" node exists in resetable triggers
+            $ActionXml.Element("EFT_Action").Element("ExecuteAfter").Value = (get-date (Get-UKTime).AddMinutes($($EFT_Action.Element("DelayResetProcessBy").Value)) -format "yyyy-MM-dd HH:mm:ss")
+
+            $ActionXml.ToString() | out-file $ResetTriggerPath
+
+            Move-Item (join-path $PendingActionsFolder $ResetFromTriggerName) $ToProcessActionsFolder -force
+        }
+        else {
+                Move-Item (join-path $PendingActionsFolder $CurrentTriggerName) $ToProcessActionsFolder -force
+        }
+    }
+}
+
+
+
+Function Set-NextTrigger
+{
+    param ($EFT_Action, $XmlTrigger)
+
+    $EFT_Action.Element("LastAttemptDTS").Value = $StartTimeLog
+    [string]$ProcessPriority   = $EFT_Action.Element("ProcessPriority").Value
+    [string]$GUID              = $EFT_Action.Element("GUID").Value
+	[string]$CreationDTS       = $EFT_Action.Element("CreationDTS").Value.Split(" ")[0].Replace("-","")
+    [string]$StepSequence      = $EFT_Action.Element("StepSequence").Value
+
+    $CurrentTriggerName = $ProcessPriority.PadLeft(2,'0') + '_' + $GUID + '_' + $StepSequence.PadLeft(2,'0') + '.xml'
+
+    if ($(Split-Path $XmlTrigger -Leaf) -eq $CurrentTriggerName)
+    {
+        [byte]$NextStepSequence = $StepSequence
+        [string]$StepSequence   = $NextStepSequence + 1
+
+        $NextTriggerName = $ProcessPriority.PadLeft(2,'0') + '_' + $GUID + '_' + $StepSequence.PadLeft(2,'0') + '.xml'
+
+        #$NextTriggerName2 = $(Split-Path $XmlTrigger -Leaf).Split("_")[0] + "_" + $(Split-Path $XmlTrigger -Leaf).Split("_")[1] + "_" + $([string]([byte]$($(Split-Path $XmlTrigger -Leaf).Split("_")[2]).Replace(".xml","") + 1)).PadLeft(2,"0") + ".xml"
+
+        $NextTriggerFile = join-path $PendingActionsFolder $NextTriggerName
+
+        if (Test-Path $NextTriggerFile)
+        {
+            Write-Log "Next Trigger - $NextTriggerName"
+
+            Move-Item $NextTriggerFile $ToProcessActionsFolder -force
+            #Move-Item $NextTriggerFile $OnHoldActionsFolder
+        }
+        else
+        {
+            Write-Log "Process Finished"
+        }
+    }
+    else
+    {
+        Write-Log "Trigger File name does not match to content. Further actions halted."
+
+        $EFT_Action.Element("LastResult").Value = "Trigger File name does not match to content. Further actions halted."
+
+        Send-Email $EFT_Action -Warning
+    }
+
+    #if (!(Test-path $(join-path $CompleteActionsFolder $GUID)))
+    #{ MkDir $(join-path $CompleteActionsFolder $GUID)}
+
+	if (!(Test-path $(join-path (join-path $CompleteActionsFolder $CreationDTS) $GUID)))
+    { MkDir $(join-path (join-path $CompleteActionsFolder $CreationDTS) $GUID) | Out-Null}
+
+    try
+	{
+		Move-Item $XmlTrigger $(join-path $(join-path $CompleteActionsFolder $CreationDTS) $GUID) -force -ErrorAction Stop
+	}
+	catch
+	{
+		Move-Item $XmlTrigger $(join-path $CompleteActionsFolder $CreationDTS) -force
+	}
+}
+
+
+
+Function Set-RetryAction
+{
+    param($EFT_Action, $XmlTrigger, $GUID)
+
+    [int]$RemainingRetries = $EFT_Action.Element("RetriesRemaining").Value
+
+    $EFT_Action.Element("LastAttemptDTS").Value = get-date (Get-UKTime) -Format "yyyy-MM-dd HH:mm:ss"
+    $EFT_Action.Element("RetriesRemaining").Value = $EFT_Action.Element("RetriesRemaining").Value - 1
+    $EFT_Action.Element("LastResult").Value = $Result
+
+    [System.IO.File]::WriteAllText($XmlTrigger, $EFT_Action.ToString());
+
+    Write-Log "Remaining Retries: $RemainingRetries" #$($EFT_Action.Element("RetriesRemaining").Value)"
+
+    if ($RemainingRetries -gt 0)
+    {
+        Write-Log "Retrying.."
+
+        Move-Item $XmlTrigger $ToProcessActionsFolder -force
+
+        Return "OK"
+    }
+    else
+    {
+        Write-Log "Giving up.."
+
+        if (!(Test-Path $(join-path $FailedActionsFolder $GUID))) {
+                mkdir $(join-path $FailedActionsFolder $GUID) | Out-Null
+        }
+
+        Move-Item $XmlTrigger $(join-path $FailedActionsFolder $GUID) -Force
+
+        Return "Reached max retries"
+    }
+}
+
+
+
+Function Start-FileCopy
+{
+    param ( [string]$FromFile,
+            [string]$ToFile
+          )
+
+    Try
+    {
+        if (Test-PathAdvanced $FromFile)
+        {
+            Write-Log "Copying File"
+
+            #if ($ToFile -like "*[[WildcardFileName]]*")
+            #{
+            #    Get-ChildItem $(split-path $FromFile) -Filter $(split-path $FromFile -leaf) -File -ErrorAction SilentlyContinue | ForEach {
+
+            #            Write-Log "From $($_.FullName)" ;
+            #            Write-Log "To $($ToFile.Replace("[[MultiFileName]]",$_.Name))";
+            #            Copy-Item -path $_.FullName -Destination $ToFile.Replace("[[WildcardFileName]]",$_.Name) ;
+            #        }
+            #}
+            #else
+            #{
+                Write-Log "From $FromFile"
+                Write-Log "To $ToFile"
+
+                # do not delete folders
+                if ((Test-Path $ToFile) -and ((Get-Item $ToFile) -is [System.IO.DirectoryInfo]))
+                {
+                    $ToFile = [System.IO.Path]::Combine($ToFile, [System.IO.Path]::GetFileName($FromFile))
+                }
+
+
+                if (Test-PathAdvanced $ToFile)
+                {
+                    Write-Log "Target File already exists. Overwriting."
+                    Remove-item -LiteralPath $ToFile
+                }
+
+                Copy-ItemAdvanced $FromFile $ToFile -ErrorAction Stop
+           #}
+		   
+		    Write-Log_DTPOnline $ToFile "A"
+
+            Write-Log "Copy File - OK"
+            Return "OK"
+        }
+        else
+        {
+            Write-Log "Source file not found - $FromFile"
+            Return "Missing Source File"
+        }
+    }
+    Catch
+    {
+        Write-Log $_
+        Return "Error Copying File"
+    }
+}
+
+
+
+Function Start-FileMove
+{
+    param ( [string]$FromFile,
+            [string]$ToFile
+          )
+
+    Try
+    {
+        if (Test-PathAdvanced $FromFile)
+        {
+            Write-Log "Moving File"
+
+           # if ($ToFile -like "*[[WildcardFileName]]*")
+           # {
+           #     Get-ChildItem $(split-path $FromFile) -Filter $(split-path $FromFile -leaf) -File -ErrorAction SilentlyContinue | ForEach {
+
+           #             Write-Log "From $($_.FullName)" ;
+           #             Write-Log "To $($ToFile.Replace("[[WildcardFileName]]",$_.Name))";
+           #             Move-Item -path $_.FullName -Destination $ToFile.Replace("[[WildcardFileName]]",$_.Name) ;
+           #         }
+           # }
+           # else
+           # {
+                Write-Log "From $FromFile"
+                Write-Log "To $ToFile"
+
+                # do not delete folders
+                if ((Test-Path $ToFile) -and ((Get-Item $ToFile) -is [System.IO.DirectoryInfo]))
+                {
+                    $ToFile = [System.IO.Path]::Combine($ToFile, [System.IO.Path]::GetFileName($FromFile))
+                }
+
+
+                if (Test-PathAdvanced $ToFile)
+                {
+                    Write-Log "Target File already exists. Overwriting."
+                    Remove-item -LiteralPath $ToFile
+                }
+
+                Move-ItemAdvanced $FromFile $ToFile -ErrorAction Stop
+            #}
+
+            Write-Log "Move File - OK"
+            Return "OK"
+        }
+        else
+        {
+            Write-Log "Source file not found - $FromFile"
+            Return "Missing Source File"
+        }
+    }
+    Catch
+    {
+        Write-Log $_
+        Return "Error Moving File"
+    }
+}
+
+
+
+Function Start-FileRename
+{
+    param ( [string]$FromFile,
+            [string]$ToFile
+          )
+
+    Try
+    {
+        if (Test-PathAdvanced $FromFile)
+        {
+            Write-Log "Renaming File"
+            Write-Log "From $FromFile"
+            Write-Log "To $ToFile"
+
+            Rename-Item $FromFile $ToFile -ErrorAction Stop
+
+            Write-Log "Rename File - OK"
+            Return "OK"
+        }
+        else
+        {
+            Write-Log "Source file not found - $FromFile"
+            Return "Missing Source File"
+        }
+    }
+    Catch
+    {
+        Write-Log $_
+        Return "Error Renaming File"
+    }
+}
+
+
+
+Function Start-FolderDelete
+{
+    param ( [string]$FromFolder )
+	
+	if ($FromFolder[-1] -ne "\") {$FromFolder += "\"}
+	
+    Write-Log "Deleting folder"
+	Write-Log "To $FromFolder"
+
+    Try {
+        if (Test-PathAdvanced $FromFolder) {
+
+            if ((Get-ChildItem -LiteralPath $FromFolder -Recurse).Count -gt 15) {
+                Throw "Folder contains more than 15 items and will not be deleted to avoid accidental losses from this functionality."
+            }
+            else {
+                # for cases when folder is not empty, remove sub-items first from bottom level up
+                Get-ChildItem -LiteralPath $FromFolder -Recurse | sort -Property @{ Expression = { $_.FullName.Split('\').Count } } -Desc | Remove-Item -force -Confirm:$false -ErrorAction Stop
+
+                # delete the root folder
+                Remove-Item -LiteralPath $FromFolder -ErrorAction Stop -Force
+
+				Write-Log "Delete Folder - OK"
+                Return "OK"
+            }
+        }
+        else {
+			Write-Log "Folder does not exist - OK"
+            Return "OK"
+        }
+    }
+    Catch {
+        Write-Log $_
+        Return "Error Deleting Folder"
+    }
+
+}
+
+
+
+Function Start-EmptyFolderDelete
+{
+    param ( [string]$FromFolder )
+	
+	if ($FromFolder[-1] -ne "\") {$FromFolder += "\"}
+	
+    Write-Log "Deleting empty folder"
+	Write-Log "To $FromFolder"
+
+    if (Test-PathAdvanced $FromFolder) 
+    {
+        if ((gci -LiteralPath $FromFolder -file -Recurse).Count -eq 0)
+        {
+            try 
+            { 
+                Remove-Item -LiteralPath $FromFolder -Recurse
+                Write-Log "Delete Folder - OK"
+            } 
+            catch 
+            { 
+                write-Log $_
+            }
+        }
+        else
+        {
+            Write-Log "Folder not empty - ignoring"
+        }
+    }
+    else 
+    {
+		Write-Log "Folder does not exist - OK"
+    }
+
+    Return "OK"
+}
+
+
+
+Function Start-FileDelete
+{
+    param ( [string]$FromFile )
+
+    Try
+    {
+        if (Test-PathAdvanced $FromFile)
+        {
+            if (!((Get-Item -LiteralPath $FromFile) -is [System.IO.DirectoryInfo]))
+            {
+
+                Write-Log "Deleting File"
+                Write-Log "To $FromFile"
+
+                Remove-Item -LiteralPath $FromFile -ErrorAction Stop -Force
+
+				Write-Log "Delete File - OK"
+                Return "OK"
+            }
+            else
+            {
+                Write-Log "Tried deleting Folder instead of a File - $FromFile"
+                Return "Tried deleting Folder instead of a File"
+            }
+        }
+        else
+        {
+            Write-Log "Source file not found - OK"
+            Return "OK"
+        }
+    }
+    Catch
+    {
+        Write-Log $_
+        Return "Error Deleting File"
+    }
+}
+
+
+
+Function Start-FileDecompress
+{
+    param ( [string]$zipFile,
+			[string]$TargetFolder,
+            [string]$Ps,
+            [int]$MinDecompressedCount,
+            [int]$MaxDecompressedCount
+          )
+    Try
+    {
+        if (Test-PathAdvanced $zipFile)
+        {
+            Write-Log "Decompressing File"
+            Write-Log "From $zipFile"
+
+            $zipFileQ = '"' + $zipFile + '"'
+            $OutFolderQ = '"' + $(split-path $zipFile) + '"'
+
+			if ($TargetFolder -ne "")
+			{
+				if (!(Test-Path $TargetFolder))
+				{ mkdir $TargetFolder | Out-Null}
+
+				$OutFolderQ = '"' + $TargetFolder + '"'
+			}
+            else
+            {
+                $TargetFolder = split-path $zipFile
+            }
+			
+			$PS = $PS.Replace("'","[[SingleQuote]]")
+						
+			$command = "& $7ZipPath x -o$OutFolderQ -y -p'$Ps' $zipFileQ"
+						
+			$command = $command.Replace("'","`"").Replace("[[SingleQuote]]","'").Replace('[[DollarSign]]','$')
+
+            iex $command | out-null
+
+            If ($LASTEXITCODE -ne 0)
+            {
+				Write-Log "Decompress File - FAILED"
+                Return "Decompression FAILED"
+            }
+            else
+            {
+                #if (($TargetFolder -ne $null) -and ($TargetFolder -ne ""))
+                #{ Remove-Item $zipFile }
+
+                $DecompressedFileCount = $(gci $TargetFolder -File -Recurse -Exclude $(split-path $zipFile -leaf)).Count
+
+                if ($DecompressedFileCount -lt $MinDecompressedCount)
+                { 
+					Write-Log "Decompress Issue - expected at least $MinDecompressedCount files, found $DecompressedFileCount" 
+					Return "Decompress Issue - expected at least $MinDecompressedCount files, found $DecompressedFileCount" 
+				}
+
+                if ($DecompressedFileCount -gt $MaxDecompressedCount)
+                { 
+					Write-Log "Decompress Issue - expected max $MaxDecompressedCount files, found $DecompressedFileCount" 
+					Return "Decompress Issue - expected max $MaxDecompressedCount files, found $DecompressedFileCount" 
+				}
+
+                Write-Log "Decompress File - OK"
+                Return "OK"
+            }
+        }
+        else
+        {
+            Write-Log "Source file not found - $zipFile"
+            Return "Missing Source File"
+        }
+    }
+    Catch
+    {
+        Write-Log "$_"
+        Return "Error Decompressing File"
+    }
+}
+
+
+
+Function Start-FileCompress
+{
+    param ( [string]$FromFile,
+			[string]$TargetFolder,
+            [string]$TargetFileName,
+            [ValidateSet("7 Zip","WinZip","g Zip")] [string]$CompressionType = "WinZip",
+            [string]$Ps,
+            [string]$ExtraFiles
+          )
+    Try
+    {
+        if (Test-PathAdvanced $FromFile)
+        {
+
+            $CompressionTypeReal = switch ( $CompressionType )
+            {
+                "7 Zip"  { "7z"   }
+                "WinZip" { "zip"  }
+                "g Zip"  { "gzip" }
+            }
+
+            $Extension = switch ( $CompressionType )
+            {
+                "7 Zip"  { ".7z"  }
+                "WinZip" { ".zip" }
+                "g Zip"  { ".gz"  }
+            }
+
+            if (($TargetFileName -ne $Null) -and ($TargetFileName -ne ""))
+            {
+                [string]$OutFileName = $TargetFileName
+            }
+            else
+            {
+                [string]$OutFileName = [System.IO.Path]::GetFileName($FromFile) + $Extension
+            }
+
+            Write-Log "Compressing File"
+            Write-Log "From $FromFile"
+            Write-Log "To $OutFileName"
+
+            $zipFileQ = '"' + $FromFile + '"'
+
+            if (!([string]::IsNullOrEmpty($ExtraFiles)))
+            {
+                $xtraFiles = $ExtraFiles.Split(';')
+
+                foreach ($xtraFile in $xtraFiles)
+                { 
+                    #TOT 358 - Add folder path to file name
+                    if ($xtraFile.Substring(0,2) -eq '\\')
+                    {
+                        $xtraFileFullPath = $xtraFile
+                    }
+                    else
+                    {
+                        $xtraFileFullPath = Join-Path $(Split-Path $FromFile -Parent) $xtraFile
+                    }
+
+                    if (!(Test-PathAdvanced $xtraFileFullPath))
+                    { 
+                        Write-Log "Source file not found - $xtraFileFullPath"
+                        Write-Log "Related primmary source file - $FromFile"
+                        Return "Missing Source File"
+                    }
+
+                    $zipFileQ = $zipFileQ +  ' "' + $xtraFileFullPath + '"'
+                }
+
+            }
+
+            $OutFileQ = '"' + $(join-path (split-path $FromFile) $OutFileName) + '"'
+
+			if ($TargetFolder -ne "")
+			{
+				if (!(Test-Path $TargetFolder))
+				{ mkdir $TargetFolder | Out-Null }
+
+				$OutFileQ = '"' + $(join-path $TargetFolder $OutFileName) + '"'
+			}
+			
+			$SourceFileExtension = [System.IO.Path]::GetExtension($FromFile)
+			
+			#for following extensions, Store but do not compress
+			if ($SourceFileExtension -in (".zip", ".7z", ".rar", ".gz", ".bz2", ".pdf", ".docx", ".accdb", ".xlsx", ".png", ".jpg", ".avi", ".mpg", ".mp3", ".m4v", ".m4a"))
+			{ $m = 0 }
+			else 
+			{ $m = 1 }
+
+            if ( $Ps.Length -gt 0 )
+            { $command = "& $7ZipPath a -mx=$m -mmt=off -p'$PS' -t$CompressionTypeReal $OutFileQ $zipFileQ" }
+            else
+            { $command = "& $7ZipPath a -mx=$m -mmt=off -t$CompressionTypeReal $OutFileQ $zipFileQ" }
+
+            iex $command | out-null
+
+            If ($LASTEXITCODE -ne 0)
+            {
+				Write-Log "Compress File - FAILED"
+                Return "Compression FAILED"
+            }
+            else
+            {
+                Write-Log "Compress File - OK"
+
+                #if (($TargetFolder -ne $null) -and ($TargetFolder -ne ""))
+                #{ Remove-item $FromFile }
+
+                Return "OK"
+            }
+        }
+        else
+        {
+            Write-Log "Source file not found - $FromFile"
+            Return "Missing Source File"
+        }
+    }
+    Catch
+    {
+        Write-Log "$_"
+        Return "Error Compressing File"
+    }
+}
+
+
+
+Function Set-CDReplaceKeywords {
+    Param (
+        $CDTemplate,
+        $OutFile,
+        $Action,
+        $Process
+    )
+
+    $CDSourceFile = (join-path $Action.Element("SourceFolder").Value $Action.Element("SourceFile").Value)
+    $CDTargetFile = $(try { (join-path $Action.Element("DestinationFolder").Value $Action.Element("DestinationFile").Value) } catch { $Action.Element("DestinationFile").Value })
+
+    $CDSourceFile = Set-CorrectSlashes $CDSourceFile ($Action.Element("SourceFolder").Value)
+    $CDTargetFile = Set-CorrectSlashes $CDTargetFile ($Action.Element("DestinationFolder").Value)
+
+    $Template = get-content $Template -ErrorAction Stop
+
+    $Template = $Template.Replace("{{PROCESS}}", $Process)
+
+    $Template = $Template.Replace("{{SourceFile}}", $CDSourceFile)
+
+    $Template = $Template.Replace("{{TargetFile}}", $CDTargetFile)
+
+    $Template = $Template.Replace("{{snid}}", $Action.Element("CD_SNodeID").Value)
+
+    if (($Action.Element("CD_SNodeID").Value).Length -gt 0) {
+        $Template = $Template.Replace("{{DisableSNID}}", "")
+    }
+    else {
+        $Template = $Template.Replace("{{DisableSNID}}", "//")
+    }
+
+    $Template = $Template.Replace("{{SNODE}}", $Action.Element("CD_Node").Value)
+
+    $Template = $Template.Replace("{{Misc1}}", $Action.Element("Misc1").Value)
+
+    $Template = $Template.Replace("{{Misc2}}", $Action.Element("Misc2").Value)
+
+    $Template = $Template.Replace("{{Misc3}}", $Action.Element("Misc3").Value)
+
+    $Template = $Template.Replace("{{Misc4}}", $Action.Element("Misc4").Value)
+
+    $Template = $Template.Replace("{{SentPath}}", $Action.Element("SentPath").Value)
+
+    if (($Action.Element("SentPath").Value).Length -gt 0) {
+        $Template = $Template.Replace("{{DisableFileMove}}", "")
+    }
+    else {
+        $Template = $Template.Replace("{{DisableFileMove}}", "//")
+    }
+
+    Return $Template
+}
+
+
+
+Function Start-CDTransfer {
+
+    Param (
+        $SourceFilePath,
+        $Template,
+        $OutFile,
+        [object]$Action,
+        $Process,
+        $GUID
+    )
+
+    # CDP files will be created in subfolders of temp working directories
+    $CDTransferDirectory = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\DTP_Processing\$GUID\CDP\"
+
+    try { mkdir $CDTransferDirectory | Out-Null }
+    catch { }
+
+    $OutFile = join-path $CDTransferDirectory $OutFile
+
+    Write-Log "Creating CDP file"
+	Write-Log "To $OutFile"
+
+    # Replace tags in generic template according to populated CD relevant EFT_Action sub-nodes
+    try {
+        Set-CDReplaceKeywords -CDTemplate $Template -OutFile $OutFile -Action $Action -Process $Process | out-file $OutFile -Encoding Default
+    }
+    catch {
+        Write-Log $_
+
+        Return "Error Creating CD Script"
+    }
+
+    Write-Log "Submitting CDP file to Connect Direct"
+
+    # Define content of trigger that will tell file agent to initiate the process
+    $NewTrigger = @"
+$SourceFilePath
+$OutFile
+
+Submit
+
+"@
+
+    # There are two possible triggers at the moment "Init_GUID.trg" and "Check_GUID.trg". The Check trigger will be automatically created by the script which runs on connect direct server
+    $CDPTrigger = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Triggers\DTP\CDActions\Init_$GUID.trg"
+	#$CDPTrigger = "\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\TEST\Triggers\DTP\CDActions\Init_$GUID.trg" #Temporary. CDP to be submitted manualy from CALLCREDIT02, to send to CD.WN.STNGSSTEST.
+
+    # Initiate CD transfer by creating the trigger for file agent
+    $NewTrigger | out-file $CDPTrigger
+
+    # Wait for confirmation of process initiation
+    $CDConfirmationTrigger = join-path $CDTransferDirectory "CD_InitConfirmed.trg"
+    $SB = {(Test-Path $CDConfirmationTrigger)}
+
+    $Result = Wait-Action -Condition $SB -Timeout 300 -ArgumentList "" -RetryInterval 5
+	
+	Write-Log "Submit CD Process - $Result" 
+    Return $Result
+}
+
+
+
+Function Start-PGPDecrypt
+{
+    param (
+            $PGPDecryptFolder,
+            $GUID,
+            $SourceFile,
+            $DecryptionKeyName
+          )
+
+    Write-Log "Decrypting File"
+    Write-Log "From $SourceFile"
+
+	$ShortGUID = $GUID.Split("-")[0] + "-" + $GUID.Split("-")[4]
+
+    if (Test-PathAdvanced $SourceFile)
+    {
+		if ($([System.IO.Path]::GetExtension($SourceFile)) -match "pgp|gpg")
+		{
+			if (Test-Path $(join-path $PGPDecryptFolder $EncryptionKeyName))
+			{
+				$DecryptionTempFolder = join-path $(join-path $PGPDecryptFolder $DecryptionKeyName) $ShortGUID
+
+				if (!(test-path $DecryptionTempFolder))
+				{
+					try { mkdir $DecryptionTempFolder | Out-Null  } catch { Return 'FAILED - could not create temporary decryption folder' }
+				}
+
+				$BaseFileName = [System.IO.Path]::GetFileNameWithoutExtension($SourceFile)
+				
+				Write-Log "To $(join-path $(split-path $SourceFile -Parent) $BaseFileName)"
+				
+				$SourceFileName = [System.IO.Path]::GetFileName($SourceFile)
+
+				Move-ItemAdvanced $SourceFile $DecryptionTempFolder -force
+
+				$FileForDecryption = join-path $DecryptionTempFolder $SourceFileName
+
+				# Wait until SourceFile no longer exists or action times out
+				$SB = {!(Test-Path $FileForDecryption)}
+
+				$Result = Wait-Action -Condition $SB -Timeout 1800 -ArgumentList "" -RetryInterval 5
+
+				if ($Result -eq "OK")
+				{
+					$DecryptedFile = Join-Path $DecryptionTempFolder $BaseFileName
+
+					if (Test-PathAdvanced $DecryptedFile)
+					{
+						if ($DecryptedFile.Length -eq 0)
+						{
+							Write-Log "Decrypted file is empty - $DecryptedFile"
+
+							# ???
+						}
+						else
+						{
+							Write-Log "Decrypt File - OK"
+						}
+
+						Move-ItemAdvanced $DecryptedFile $(split-path $SourceFile -Parent) -force
+
+						try { Remove-item $DecryptionTempFolder } catch {}
+
+					}
+					else
+					{
+						$DecryptedFiles = Get-ChildItem $DecryptionTempFolder -File | Where{($_.name -notlike "*.pgp") -and ($_.name -notlike "*.gpg")}
+
+						if($DecryptedFiles.Count -eq 0)
+						{
+
+							Write-Log "Nothing Decrypted"
+
+							Return "Nothing Decrypted"
+						}
+						else
+						{
+							try { Remove-item $DecryptionTempFolder -Confirm:Y -Force } catch {}
+
+							Write-Log "FAILED - decrypted file name mismatched expected file name $($DecryptedFiles.Fullname)"
+							Return "FAILED - decrypted file name mismatched expected file name $($DecryptedFiles.Fullname)"
+						}
+					}
+				}
+				else
+				{
+					Write-Log "Result file not found - $SourceFile"
+					Return "Missing Result File"
+				}
+			}
+			else
+			{
+				Write-Log "Missing PGP root folder - $(join-path $PGPDecryptFolder $EncryptionKeyName) "
+				Return "Missing PGP root folder"
+			}
+		}
+		else
+		{
+			Write-Log "Source file is not pgp - $SourceFile"
+			Return "File Type Mismatch"
+		}
+    }
+    else
+    {
+        Write-Log "Source file not found - $SourceFile"
+        Return "Missing Source File"
+    }
+	
+
+    Return "OK"
+}
+
+
+
+function Wait-Action {
+
+    param
+    (
+        [scriptblock]$Condition,
+        [int]$Timeout,
+        [object[]]$ArgumentList,
+        [int]$RetryInterval = 5
+    )
+
+    try
+    {
+        $timer = [Diagnostics.Stopwatch]::StartNew()
+
+        while (($timer.Elapsed.TotalSeconds -lt $Timeout) -and (-not (& $Condition $ArgumentList)))
+        {
+            Start-Sleep -Seconds $RetryInterval
+
+            #$totalSecs = [math]::Round($timer.Elapsed.TotalSeconds, 0)
+        }
+
+        $timer.Stop()
+
+        if ($timer.Elapsed.TotalSeconds -gt $Timeout)
+        {
+            Return 'Timed Out'
+        }
+    }
+    catch
+    {
+        Write-Error -Message $_.Exception.Message
+
+        Return $_
+    }
+
+    Return "OK"
+}
+
+
+
+Function Start-PGPEncrypt
+{
+    param (
+            $PGPEncryptRootFolder,
+            $GUID,
+            $SourceFile,
+            $EncryptionKeyName
+          )
+
+    Write-Log "Encrypting File"
+	Write-Log "From $SourceFile"
+	Write-Log "To $SourceFile`.pgp"
+
+	$ShortGUID = $GUID.Split("-")[0] + "-" + $GUID.Split("-")[4]
+
+    if ($EncryptionKeyName -ne "")
+    {
+        if (Test-PathAdvanced $SourceFile)
+        {
+            if (Test-Path $(join-path $PGPEncryptRootFolder $EncryptionKeyName))
+            {
+				if ($EncryptionKeyName -match "Vanquis")
+				{$EncryptionKeyName = "Vanquis"}
+
+                $EncryptionTempFolder = join-path $(join-path $PGPEncryptRootFolder $EncryptionKeyName) $ShortGUID
+
+                if (!(test-path $EncryptionTempFolder))
+                {
+                    try { mkdir $EncryptionTempFolder | Out-Null } catch { Return 'FAILED - could not create temporary encryption folder' }
+                }
+
+                $SourceFileName = [System.IO.Path]::GetFileName($SourceFile)
+
+				Move-ItemAdvanced $SourceFile $EncryptionTempFolder -force
+				
+                $FileForEncryption = join-path $EncryptionTempFolder $SourceFileName
+
+                # Wait until SourceFile no longer exists or action times out
+                $SB = {!(Test-PathAdvanced $FileForEncryption)}
+
+                $Result = Wait-Action -Condition $SB -Timeout 1800 -ArgumentList "" -RetryInterval 5
+
+                if ($Result)
+                {
+                    $EncryptedFile = Join-Path $EncryptionTempFolder "$SourceFileName`.pgp"
+
+                    if (Test-PathAdvanced $EncryptedFile)
+                    {
+                        if ($EncryptedFile.Length -eq 0)
+                        {
+                            Write-Log "Encrypted file is empty - $EncryptedFile"
+
+                            # ???
+                        }
+                        else
+                        {
+                            Write-Log "Encrypt File - OK"
+                        }
+					
+						Move-ItemAdvanced $EncryptedFile $(split-path $SourceFile -Parent) -force
+
+                        try { Remove-item $EncryptionTempFolder } catch {}
+                    }
+                    else
+                    {
+                        $EncryptedFiles = Get-ChildItem $EncryptionTempFolder -File | Where{($_.name -like "*.pgp") -or ($_.name -like "*.gpg")}
+
+                        if($EncryptedFiles.Count -eq 0)
+                        {
+                            try { Remove-item $EncryptionTempFolder -Confirm:Y -Force } catch {}
+
+                            Write-Log "Nothing Encrypted"
+                            Return "Nothing Encrypted"
+                        }
+                        else
+                        {
+                            try { Remove-item $EncryptionTempFolder -Confirm:Y -Force } catch {}
+
+                            Write-Log "FAILED - encrypted file name mismatched expected file name $($DecryptedFiles.Fullname)"
+                            Return "FAILED - encrypted file name mismatched expected file name $($EncryptedFiles.Fullname)"
+                        }
+                    }
+                }
+                else
+                {
+                    Write-Log "Result file not found - $SourceFile"
+                    Return "Missing Result File"
+                }
+            }
+            else
+            {
+                Write-Log "Missing PGP root folder - $(join-path $PGPEncryptRootFolder $EncryptionKeyName) "
+                Return "Missing PGP root folder"
+            }
+        }
+        else
+        {
+            Write-Log "Source file not found - $SourceFile"
+            Return "Missing Source File"
+        }
+    }
+    else
+    {
+        Write-Log "Missing encryption key value"
+        Return "Missing encryption key value"
+    }
+
+    Return "OK"
+}
+
+
+
+Function Start-CreateFolder
+{
+    param($FolderPath)
+
+	if ($FolderPath[-1] -ne "\") {$FolderPath += "\"}
+	
+    Write-Log "Creating Folder"
+	Write-Log "To $FolderPath"
+
+    if(!(Test-Path $FolderPath))
+    {
+        try
+        {
+            Mkdir $FolderPath -Force -erroraction Stop | out-null
+
+            Write-Log "Create Folder - OK"
+        }
+        catch
+        {
+            Write-Log "FAILED - error creating folder $FolderPath"
+            Return "Error creating folder"
+        }
+    }
+    else
+    {
+        Write-Log "Folder already exists - OK"
+    }
+
+    Return "OK"
+}
+
+
+
+Function Send-Email
+{
+    param(
+            $EFT_Action,
+            [switch]$Warning
+         )
+
+    if ($Warning)
+    {
+		if ($($EFT_Action.Element("FailureNotificationEmail").Element("To").value) -ne "")
+		{ $To = $($EFT_Action.Element("FailureNotificationEmail").Element("To").value)}
+		else
+		{ $To = "UKDataOperationsEFTCD@transunion.com"}
+
+		if ($($EFT_Action.Element("FailureNotificationEmail").Element("CC").value) -ne "")
+		{ $CC = $($EFT_Action.Element("FailureNotificationEmail").Element("CC").value)}
+		else
+		{ $CC = ""}
+
+		if ($($EFT_Action.Element("FailureNotificationEmail").Element("BCC").value) -ne "")
+		{ $BCC = $($EFT_Action.Element("FailureNotificationEmail").Element("BCC").value)}
+		else
+		{ $BCC = ""}
+
+		if ($($EFT_Action.Element("FailureNotificationEmail").Element("Subject").value) -ne "")
+		{ $Subject = $($EFT_Action.Element("FailureNotificationEmail").Element("Subject").value)}
+		else
+		{ $Subject = "DTP - Action - FAILED"}
+		
+		# TOT 456
+		if ([String]::IsNullOrEmpty("$To$CC$BCC"))
+		{	
+			$To = "UKDataOperationsEFTCD@transunion.com"
+			$CC = ""
+			$BCC = ""
+		}
+		# TOT 456
+		if ([String]::IsNullOrEmpty($Subject))
+		{	
+			$Subject = "DTP - Action - FAILED"
+		}
+	
+	$Message = @"
+
+$($EFT_Action.Element("FailureNotificationEmail").Element("Message").value)
+
+Process GUID - $($EFT_Action.Element("GUID").value)
+Global GUID  - $Global:GUID
+
+File Action - $($EFT_Action.Element("ActionType").value)
+Last Result - $($EFT_Action.Element("LastResult").value)
+Physical File Path - $(join-path $($EFT_Action.Element("SourceFolder").value) $($EFT_Action.Element("SourceFile").value))
+
+Log File - $LogFile
+"@
+	#}
+
+		Write-Log "Sending warning email to $To $CC $BCC"
+
+    }
+    else
+    {
+		if ($($EFT_Action.Element("SuccessNotificationEmail").Element("To").value) -ne "")
+		{ $To = $($EFT_Action.Element("SuccessNotificationEmail").Element("To").value)}
+		else
+		{ $To = "UKDataOperationsEFTCD@transunion.com"}
+
+		if ($($EFT_Action.Element("SuccessNotificationEmail").Element("CC").value) -ne "")
+		{ $CC = $($EFT_Action.Element("SuccessNotificationEmail").Element("CC").value)}
+		else
+		{ $CC = ""}
+
+		if ($($EFT_Action.Element("SuccessNotificationEmail").Element("BCC").value) -ne "")
+		{ $BCC = $($EFT_Action.Element("SuccessNotificationEmail").Element("BCC").value)}
+		else
+		{ $BCC = ""}
+
+		if ($($EFT_Action.Element("SuccessNotificationEmail").Element("Subject").value) -ne "")
+		{ $Subject = $($EFT_Action.Element("SuccessNotificationEmail").Element("Subject").value)}
+		else
+		{ $Subject = "DTP - Action - OK" }
+
+		if ($($EFT_Action.Element("SuccessNotificationEmail").Element("Message").value) -ne "")
+		{ $Message = $($EFT_Action.Element("SuccessNotificationEmail").Element("Message").value)}
+		else
+		{ $Message = @"
+
+Process GUID - $($EFT_Action.Element("GUID").value)
+
+File Action - $($EFT_Action.Element("ActionType").value)
+Last Result - $($EFT_Action.Element("LastResult").value)
+"@
+	}
+
+	Write-Log "Sending success email to $To $CC $BCC"
+
+    #Write-Log "Sending success email to $($EFT_Action.Element("SuccessNotificationEmail").Element("To").value) $($EFT_Action.Element("SuccessNotificationEmail").Element("CC").value) $($EFT_Action.Element("SuccessNotificationEmail").Element("BCC").value)"
+<#
+    $EmailTrigger = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<EFT_DeliveryEmail>
+    <ConfigVersion>1.00</ConfigVersion>
+    <Email_To>$($EFT_Action.Element("SuccessNotificationEmail").Element("To").value)</Email_To>
+    <Email_CC>$($EFT_Action.Element("SuccessNotificationEmail").Element("CC").value)</Email_CC>
+    <Email_BCC>$($EFT_Action.Element("SuccessNotificationEmail").Element("BCC").value)</Email_BCC>
+    <Email_Subject>$($EFT_Action.Element("SuccessNotificationEmail").Element("Subject").value)</Email_Subject>
+    <HTML>FALSE</HTML>
+    <Email_Body>$($EFT_Action.Element("SuccessNotificationEmail").Element("Message").value)</Email_Body>
+</EFT_DeliveryEmail>
+"@
+#>
+
+        }
+
+if ([System.Net.WebUtility]::HtmlEncode($Message) -match "&lt;html&gt;")
+{
+        $EmailTrigger = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<EFT_DeliveryEmail>
+    <ConfigVersion>1.00</ConfigVersion>
+    <Email_To>$To</Email_To>
+    <Email_CC>$CC</Email_CC>
+    <Email_BCC>$BCC</Email_BCC>
+    <Email_Subject>$($Subject.Replace("&","&amp;"))</Email_Subject>
+    <HTML>TRUE</HTML>
+    <Email_Body>$([System.Net.WebUtility]::HtmlEncode($Message))</Email_Body>
+</EFT_DeliveryEmail>
+"@
+}
+else
+{
+	$EmailTrigger = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<EFT_DeliveryEmail>
+    <ConfigVersion>1.00</ConfigVersion>
+    <Email_To>$To</Email_To>
+    <Email_CC>$CC</Email_CC>
+    <Email_BCC>$BCC</Email_BCC>
+    <Email_Subject>$($Subject.Replace("&","&amp;"))</Email_Subject>
+    <HTML>FALSE</HTML>
+    <Email_Body>$($Message.Replace("&","&amp;"))</Email_Body>
+</EFT_DeliveryEmail>
+"@
+}
+#
+    $CRLF = [char]13 + [char]10
+    $HashArguments = @{
+        From    = 'TransUnion UK EFT Server <EFTServer@transunion.co.uk>'
+        To      = $To.Split(';').Trim() | Where-Object {$_} | Select-Object -Unique # array of unique, non-empty values
+        Subject = $Subject
+        Body    = ($Message -iReplace '\n',$CRLF -iReplace '\r\r\n',$CRLF)
+        SmtpServer = 'SMTPrelay.cig.local'
+        Port       = 25
+    }
+
+    if (!([string]::IsNullOrEmpty($CC)))  { $HashArguments += @{ CC  =  $CC.Split(';').Trim() | Where-Object {$_} | Select-Object -Unique } }
+    if (!([string]::IsNullOrEmpty($BCC))) { $HashArguments += @{ BCC = $BCC.Split(';').Trim() | Where-Object {$_} | Select-Object -Unique } }
+    if ([System.Net.WebUtility]::HtmlEncode($Message) -match "&lt;html&gt;") { $HashArguments += @{ BodyAsHTML = $true } }
+
+    try {
+        Send-MailMessage @HashArguments
+    }
+    catch {
+        Write-Log "Send Mail Message - FAILED - $_" 
+    }
+#>
+    # Save backup emails in xml format just in case SMTP method proves to be unstable
+    $EmailFolder = '\\cig.local\data\AppData\SFTP\Data\Usr\DataBureau\Triggers\DeliveryEmails\Sent\DTP\'
+    $EmailTrigger | out-file $(join-path $EmailFolder "$($EFT_Action.Element("GUID").value)_$(Get-Date (Get-UKTime) -format "yyyyMMdd_HHmmss").xml") -ErrorAction Stop -Encoding UTF8
+		
+    if ($Warning)
+    { Write-Log "Process Finished" }
+
+    Return "OK"
+}
+
+
+
+function Add-ToDelayedList {
+    param (
+        $EFT_Action,
+        $XmlTrigger,
+        $DelayedActionList
+    )
+
+    $DelayedActions = @()
+
+    try { $DelayedActions = @(Import-Csv $DelayedActionList) } #-Header "GUID", "ActionNumber", "ExecuteAfter" }
+    catch
+    {
+        '"GUID", "ActionNumber", "ExecuteAfter"' | Out-File $DelayedActionList
+        $DelayedActions = @(Import-Csv $DelayedActionList)
+    }
+
+    [string]$Guid = $EFT_Action.Element("GUID").Value
+    [int]$ActionNumber = $EFT_Action.Element("StepSequence").Value
+    [int]$DelayIncrement = $EFT_Action.Element("DelayIncrement").Value
+
+    # how long to wait until looking at the action again
+    if (($null -eq $DelayIncrement) -or ($DelayIncrement -eq 0))
+        { [int]$DelayIncrement = 5 }
+
+    # If action has a pre-set execution time then use difference between now and expected execution time instead
+    if (!($null -eq $EFT_Action.Element("ExecuteAfter")) -and !([string]::IsNullOrEmpty($EFT_Action.Element("ExecuteAfter").Value))) {
+        [int]$DelayIncrement = (New-TimeSpan $(get-date (get-uktime)) $(get-date $EFT_Action.Element("ExecuteAfter").Value)).TotalMinutes
+    }
+
+    $DelayIncrement = [Math]::Max($DelayIncrement,5)
+
+    $NewDelay = New-Object PsObject -Property @{ GUID = $Guid; ActionNumber = $ActionNumber; ExecuteAfter = "$(get-date (Get-UKTime).AddMinutes($DelayIncrement) -Format "yyyy-MM-dd HH:mm:ss")" }
+
+    if ( $DelayedActions | Where-Object { (($_.GUID) -eq $Guid) -and ([int]($_.ActionNumber) -eq $ActionNumber) }) {
+        $match = $DelayedActions | Where-Object {(($_.GUID) -eq $Guid) -and ([int]($_.ActionNumber) -eq $ActionNumber)}
+
+        if ($(Get-date ($match.ExecuteAfter)) -lt $(get-date (Get-UKTime).AddMinutes($DelayIncrement))) {
+            $match.ExecuteAfter = $(get-date (Get-UKTime).AddMinutes($DelayIncrement) -Format "yyyy-MM-dd HH:mm:ss")
+        }
+    }
+    else {
+        $DelayedActions += $NewDelay
+    }
+
+    $DelayedActions | Export-Csv $DelayedActionList -NoTypeInformation
+}
+
+
+
+function Remove-FromDelayedList {
+    param (
+        $EFT_Action,
+        $XmlTrigger,
+        $DelayedActionList
+    )
+
+    try { $DelayedActions = Import-Csv $DelayedActionList } #-Header "GUID", "ActionNumber", "ExecuteAfter"
+    catch { Return "OK"} # doesn't stop process if delayed list is could not be processed/found
+
+    [string]$Guid = $EFT_Action.Element("GUID").Value
+    [int]$ActionNumber = $EFT_Action.Element("StepSequence").Value
+
+   # [string]$Guid = "6b53336c-3a78-48e7-8ad7-0c3dfc63ec55"
+   # [string]$ActionNumber = "1"
+
+    '"GUID", "ActionNumber", "ExecuteAfter"' | Out-File $DelayedActionList
+
+    foreach ($action in $DelayedActions)
+    {
+        if (!(($action.GUID -eq $Guid) -and ($action.ActionNumber -eq $ActionNumber)))
+        {
+            "`"$($action.GUID)`", `"$($action.ActionNumber)`", `"$($action.ExecuteAfter)`"" | Out-File $DelayedActionList -Append
+        }
+    }
+}
